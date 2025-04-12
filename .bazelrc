@@ -1,0 +1,62 @@
+build --cxxopt=-std=c++23
+build --cxxopt=-Wall
+build --cxxopt=-Wextra
+build --cxxopt=-Wpedantic
+build --cxxopt=-Werror
+# This seems to be required by nanobind.
+build --cxxopt=-fno-aligned-allocation
+
+####################################################################################################
+# This block follows https://github.com/wjakob/nanobind_example/blob/bazel/.bazelrc
+####################################################################################################
+# nanobind's minsize.
+build --flag_alias=minsize=@nanobind_bazel//:minsize
+
+# nanobind's py-limited-api.
+build --flag_alias=py_limited_api=@nanobind_bazel//:py-limited-api
+
+# rules_python's Python version, should not collide with builtin --python_version.
+build --flag_alias=target_python_version=@rules_python//python/config_settings:python_version
+
+# rules_python's indicator to only use free-threaded toolchains for CPython 3.13+.
+# Needs to be given _together with_ nanobind-bazel's `free_threading` flag.
+build --flag_alias=free_threaded=@rules_python//python/config_settings:py_freethreaded
+
+# Set minimum supported MacOS version to 10.14 for C++17.
+common --enable_platform_specific_config
+build:macos --macos_minimum_os=10.14
+####################################################################################################
+
+build --client_env=CC=clang
+
+build -c opt
+build --cxxopt=-O3
+
+build:debug -c dbg
+build:debug --cxxopt=-gfull
+build:debug --cxxopt=-O0
+build:debug --spawn_strategy=local
+
+build:asan -c dbg
+build:asan --copt -fsanitize=address
+build:asan --copt -gfull
+build:asan --copt -O0
+build:asan --spawn_strategy=local
+build:asan --copt -fno-omit-frame-pointer
+build:asan --linkopt -fsanitize=address
+
+build:msan -c dbg
+build:msan --copt -fsanitize=memory
+build:msan --copt -gfull
+build:msan --copt -O0
+build:msan --spawn_strategy=local
+build:msan --copt -fno-omit-frame-pointer
+build:msan --linkopt -fsanitize=memory
+
+build:ubsan -c dbg
+build:ubsan --copt -fsanitize=undefined
+build:ubsan --copt -gfull
+build:ubsan --copt -O0
+build:ubsan --spawn_strategy=local
+build:ubsan --copt -fno-omit-frame-pointer
+build:ubsan --linkopt -fsanitize=undefined
