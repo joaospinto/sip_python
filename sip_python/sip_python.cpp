@@ -16,11 +16,11 @@ auto to_sip_qdldl_spm(const sip::SparseMatrix &m)
   return {m.rows, m.cols, m.ind, m.indptr, m.data, m.is_transposed};
 }
 
-auto to_sip_spm(const Eigen::SparseMatrix<double> &in, sip::SparseMatrix &out)
-    -> void {
+auto to_sip_spm(const Eigen::SparseMatrix<double, Eigen::ColMajor> &in,
+                sip::SparseMatrix &out) -> void {
   out.rows = in.rows();
   out.cols = in.cols();
-  for (int i = 0; i < out.cols; ++i) {
+  for (int i = 0; i <= out.cols; ++i) {
     out.indptr[i] = in.outerIndexPtr()[i];
   }
   for (int i = 0; i < in.nonZeros(); ++i) {

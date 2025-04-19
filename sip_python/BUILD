@@ -23,7 +23,7 @@ py_library(
     ],
     data = [":_sip_python.so"],
     srcs_version = "PY3",
-    visibility = ["//visibility:private"],
+    visibility = ["//visibility:public"],
 )
 
 py_package(
