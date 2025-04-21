@@ -14,3 +14,18 @@ py_test(
     ],
     args = ["--capture=no"],
 )
+
+py_test(
+    name = "simple_nlp",
+    srcs = ["simple_nlp.py"],
+    main = "simple_nlp.py",
+    srcs_version = "PY3",
+    deps = [
+        requirement("jax"),
+        requirement("numpy"),
+        requirement("pytest"),
+        requirement("scipy"),
+        "//sip_python",
+    ],
+    args = ["--capture=no"],
+)
