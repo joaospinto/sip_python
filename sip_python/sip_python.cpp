@@ -20,13 +20,9 @@ auto to_sip_spm(const Eigen::SparseMatrix<double, Eigen::ColMajor> &in,
                 sip::SparseMatrix &out) -> void {
   out.rows = in.rows();
   out.cols = in.cols();
-  for (int i = 0; i <= out.cols; ++i) {
-    out.indptr[i] = in.outerIndexPtr()[i];
-  }
-  for (int i = 0; i < in.nonZeros(); ++i) {
-    out.ind[i] = in.innerIndexPtr()[i];
-    out.data[i] = in.valuePtr()[i];
-  }
+  std::copy_n(in.outerIndexPtr(), out.cols + 1, out.indptr);
+  std::copy_n(in.innerIndexPtr(), in.nonZeros(), out.ind);
+  std::copy_n(in.valuePtr(), in.nonZeros(), out.data);
   out.is_transposed = false;
 }
 
@@ -34,13 +30,9 @@ auto to_sip_spm(const Eigen::SparseMatrix<double, Eigen::RowMajor> &in,
                 sip::SparseMatrix &out) -> void {
   out.rows = in.cols();
   out.cols = in.rows();
-  for (int i = 0; i <= out.cols; ++i) {
-    out.indptr[i] = in.outerIndexPtr()[i];
-  }
-  for (int i = 0; i < in.nonZeros(); ++i) {
-    out.ind[i] = in.innerIndexPtr()[i];
-    out.data[i] = in.valuePtr()[i];
-  }
+  std::copy_n(in.outerIndexPtr(), out.cols + 1, out.indptr);
+  std::copy_n(in.innerIndexPtr(), in.nonZeros(), out.ind);
+  std::copy_n(in.valuePtr(), in.nonZeros(), out.data);
   out.is_transposed = true;
 }
 
@@ -81,9 +73,9 @@ struct ModelCallbackInput {
   }
 
   auto from(const sip::ModelCallbackInput &mci) {
-    std::copy(mci.x, mci.x + x.size(), x.data());
-    std::copy(mci.y, mci.y + y.size(), y.data());
-    std::copy(mci.z, mci.z + z.size(), z.data());
+    std::copy_n(mci.x, x.size(), x.data());
+    std::copy_n(mci.y, y.size(), y.data());
+    std::copy_n(mci.z, z.size(), z.data());
   }
 
   nb::ndarray<nb::numpy, double, nb::ndim<1>> x;
@@ -96,12 +88,12 @@ struct ModelCallbackOutput {
 
   auto to(sip::ModelCallbackOutput &mco) const {
     mco.f = f;
-    std::copy(gradient_f.data(), gradient_f.data() + gradient_f.size(),
+    std::copy_n(gradient_f.data(), gradient_f.size(),
               mco.gradient_f);
     to_sip_spm(upper_hessian_lagrangian, mco.upper_hessian_lagrangian);
-    std::copy(c.data(), c.data() + c.size(), mco.c);
+    std::copy_n(c.data(), c.size(), mco.c);
     to_sip_spm(jacobian_c, mco.jacobian_c);
-    std::copy(g.data(), g.data() + g.size(), mco.g);
+    std::copy_n(g.data(), g.size(), mco.g);
     to_sip_spm(jacobian_g, mco.jacobian_g);
   }
 
@@ -216,9 +208,9 @@ private:
                            sip::ModelCallbackOutput &sip_mco,
                            sip_qdldl::Workspace &sip_qdldl_workspace)
       -> sip_qdldl::CallbackProvider {
-    std::fill(mci.x.data(), mci.x.data() + mci.x.size(), 0.0);
-    std::fill(mci.y.data(), mci.y.data() + mci.y.size(), 0.0);
-    std::fill(mci.z.data(), mci.z.data() + mci.z.size(), 0.0);
+    std::fill_n(mci.x.data(), mci.x.size(), 0.0);
+    std::fill_n(mci.y.data(), mci.y.size(), 0.0);
+    std::fill_n(mci.z.data(), mci.z.size(), 0.0);
     const auto mco = model_callback(mci);
     mco.to(sip_mco);
     return sip_qdldl::CallbackProvider(
@@ -257,15 +249,15 @@ public:
   }
 
   auto solve(Variables &variables) -> sip::Output {
-    std::copy(variables.x.data(), variables.x.data() + variables.x.size(),
+    std::copy_n(variables.x.data(), variables.x.size(),
               workspace_.vars.x);
-    std::copy(variables.s.data(), variables.s.data() + variables.s.size(),
+    std::copy_n(variables.s.data(), variables.s.size(),
               workspace_.vars.s);
-    std::copy(variables.e.data(), variables.e.data() + variables.e.size(),
+    std::copy_n(variables.e.data(), variables.e.size(),
               workspace_.vars.e);
-    std::copy(variables.y.data(), variables.y.data() + variables.y.size(),
+    std::copy_n(variables.y.data(), variables.y.size(),
               workspace_.vars.y);
-    std::copy(variables.z.data(), variables.z.data() + variables.z.size(),
+    std::copy_n(variables.z.data(), variables.z.size(),
               workspace_.vars.z);
 
     const auto timeout_callback = []() { return false; };
@@ -341,15 +333,15 @@ public:
 
     const auto output = ::sip::solve(input, sip_settings_, workspace_);
 
-    std::copy(workspace_.vars.x, workspace_.vars.x + problem_dimensions_.x_dim,
+    std::copy_n(workspace_.vars.x, problem_dimensions_.x_dim,
               variables.x.data());
-    std::copy(workspace_.vars.s, workspace_.vars.s + problem_dimensions_.s_dim,
+    std::copy_n(workspace_.vars.s, problem_dimensions_.s_dim,
               variables.s.data());
-    std::copy(workspace_.vars.e, workspace_.vars.e + problem_dimensions_.s_dim,
+    std::copy_n(workspace_.vars.e, problem_dimensions_.s_dim,
               variables.e.data());
-    std::copy(workspace_.vars.y, workspace_.vars.y + problem_dimensions_.y_dim,
+    std::copy_n(workspace_.vars.y, problem_dimensions_.y_dim,
               variables.y.data());
-    std::copy(workspace_.vars.z, workspace_.vars.z + problem_dimensions_.s_dim,
+    std::copy_n(workspace_.vars.z, problem_dimensions_.s_dim,
               variables.z.data());
     return output;
   }
