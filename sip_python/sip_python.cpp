@@ -5,6 +5,8 @@
 
 #include <algorithm>
 
+#include <qdldl.h>
+
 #include "sip/sip.hpp"
 #include "sip_qdldl/sip_qdldl.hpp"
 
@@ -88,8 +90,7 @@ struct ModelCallbackOutput {
 
   auto to(sip::ModelCallbackOutput &mco) const {
     mco.f = f;
-    std::copy_n(gradient_f.data(), gradient_f.size(),
-              mco.gradient_f);
+    std::copy_n(gradient_f.data(), gradient_f.size(), mco.gradient_f);
     to_sip_spm(upper_hessian_lagrangian, mco.upper_hessian_lagrangian);
     std::copy_n(c.data(), c.size(), mco.c);
     to_sip_spm(jacobian_c, mco.jacobian_c);
@@ -249,16 +250,11 @@ public:
   }
 
   auto solve(Variables &variables) -> sip::Output {
-    std::copy_n(variables.x.data(), variables.x.size(),
-              workspace_.vars.x);
-    std::copy_n(variables.s.data(), variables.s.size(),
-              workspace_.vars.s);
-    std::copy_n(variables.e.data(), variables.e.size(),
-              workspace_.vars.e);
-    std::copy_n(variables.y.data(), variables.y.size(),
-              workspace_.vars.y);
-    std::copy_n(variables.z.data(), variables.z.size(),
-              workspace_.vars.z);
+    std::copy_n(variables.x.data(), variables.x.size(), workspace_.vars.x);
+    std::copy_n(variables.s.data(), variables.s.size(), workspace_.vars.s);
+    std::copy_n(variables.e.data(), variables.e.size(), workspace_.vars.e);
+    std::copy_n(variables.y.data(), variables.y.size(), workspace_.vars.y);
+    std::copy_n(variables.z.data(), variables.z.size(), workspace_.vars.z);
 
     const auto timeout_callback = []() { return false; };
 
@@ -334,18 +330,28 @@ public:
     const auto output = ::sip::solve(input, sip_settings_, workspace_);
 
     std::copy_n(workspace_.vars.x, problem_dimensions_.x_dim,
-              variables.x.data());
+                variables.x.data());
     std::copy_n(workspace_.vars.s, problem_dimensions_.s_dim,
-              variables.s.data());
+                variables.s.data());
     std::copy_n(workspace_.vars.e, problem_dimensions_.s_dim,
-              variables.e.data());
+                variables.e.data());
     std::copy_n(workspace_.vars.y, problem_dimensions_.y_dim,
-              variables.y.data());
+                variables.y.data());
     std::copy_n(workspace_.vars.z, problem_dimensions_.s_dim,
-              variables.z.data());
+                variables.z.data());
     return output;
   }
 };
+
+auto getLnnz(const Eigen::SparseMatrix<double> &M) -> int {
+  std::vector<int> iwork(M.rows());
+  std::vector<int> Lnz(M.rows());
+  std::vector<int> etree(M.rows());
+  const int sumLnz = QDLDL_etree(M.rows(), M.outerIndexPtr(), M.innerIndexPtr(),
+                                 iwork.data(), Lnz.data(), etree.data());
+  assert(sumLnz >= 0 && "sumLnz < 0; this signals an invalid input M.");
+  return sumLnz;
+}
 } // namespace sip_python
 
 NB_MODULE(_sip_python, m) {
@@ -484,4 +490,7 @@ NB_MODULE(_sip_python, m) {
               nb::rv_policy::automatic_reference)
       .def_rw("z", &sip_python::Variables::z,
               nb::rv_policy::automatic_reference);
+
+  m.def("getLnnz", &sip_python::getLnnz,
+        "Computes L's nnz for an L D L^T decomposition.");
 }
