@@ -354,7 +354,7 @@ auto getLnnz(const Eigen::SparseMatrix<double> &M) -> int {
 }
 } // namespace sip_python
 
-NB_MODULE(_sip_python, m) {
+NB_MODULE(sip_python_ext, m) {
   m.doc() = "Provides Python bindings for the SIP solver.";
 
   nb::class_<sip_python::Solver>(m, "Solver")

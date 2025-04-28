@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sip_python"
+version = "0.0.1"
+description = "Python bindings for the SIP solver."
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [{ name = "João Sousa-Pinto", email = "joaospinto@gmail.com" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = [
+    "numpy",
+    "scipy",
+]
+
+[project.urls]
+Homepage = "https://github.com/joaospinto/sip_python"
+
+[tool.cibuildwheel]
+# Necessary to see build output from the actual compilation
+build-verbosity = 1
+
+# Run pytest to ensure that the package was correctly built
+test-command = "pytest {project}/tests"
+test-requires = ["jax[cpu]", "pytest"]
+
+# Don't test Python 3.8 wheels on macOS/arm64
+test-skip = "cp38-macosx_*:arm64"
+
+# Needed for full C++17 support
+[tool.cibuildwheel.macos.environment]
+MACOSX_DEPLOYMENT_TARGET = "10.14"

@@ -1,0 +1,31 @@
+load("@nanobind_bazel//:build_defs.bzl", "nanobind_extension", "nanobind_stubgen")
+
+nanobind_extension(
+    name = "sip_python_ext",
+    srcs = ["sip_python.cpp"],
+    deps = [
+        "@sip//sip",
+        "@sip_qdldl//sip_qdldl",
+        "@qdldl",
+        "@eigen",
+    ],
+    linkstatic = True,
+    visibility = ["//visibility:public",],
+)
+
+nanobind_stubgen(
+    name = "sip_python_ext_stubgen",
+    module = ":sip_python_ext",
+    marker_file = "src/py.typed",
+    output_directory = "src",
+    recursive = True,
+)
+
+py_library(
+    name = "sip_python",
+    srcs = [
+        "sip_python/__init__.py",
+    ],
+    data = [":sip_python_ext"],
+    visibility = ["//visibility:public"],
+)

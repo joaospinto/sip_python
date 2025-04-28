@@ -122,9 +122,6 @@ def test_simple_qp():
     output = solver.solve(vars)
 
     assert output.exit_status == Status.SOLVED
-    print(f"JOAO {vars.x=}", flush=True)
-    print(f"JOAO {vars.s=}", flush=True)
-    print(f"JOAO {vars.e=}", flush=True)
     assert vars.x[0] == pytest.approx(-1.15747396, abs=1e-6)
     assert vars.x[1] == pytest.approx(-4.31975162, abs=1e-6)
 

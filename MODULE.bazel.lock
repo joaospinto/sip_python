@@ -151,42 +151,6 @@
   },
   "selectedYankedVersions": {},
   "moduleExtensions": {
-    "//bazel:extensions.bzl%python_abi": {
-      "general": {
-        "bzlTransitiveDigest": "d/amzu7KsTEIneE8E4XDpsh634QpaKfGmSROhQ8+pNc=",
-        "usagesDigest": "O1RATKXjEpnfWANfon9p0AEZSGfyJlggxNQaSdF0fuc=",
-        "recordedFileInputs": {},
-        "recordedDirentsInputs": {},
-        "envVariables": {},
-        "generatedRepoSpecs": {
-          "python_abi": {
-            "repoRuleId": "@@//bazel:extensions.bzl%abi",
-            "attributes": {
-              "python_version": "3"
-            }
-          }
-        },
-        "recordedRepoMappingEntries": []
-      }
-    },
-    "//bazel:extensions.bzl%python_platform": {
-      "general": {
-        "bzlTransitiveDigest": "d/amzu7KsTEIneE8E4XDpsh634QpaKfGmSROhQ8+pNc=",
-        "usagesDigest": "Wbk3fxZBFGwyliYuxZdnsEBkmJpIljjg6ifOWzbQgG8=",
-        "recordedFileInputs": {},
-        "recordedDirentsInputs": {},
-        "envVariables": {},
-        "generatedRepoSpecs": {
-          "python_platform": {
-            "repoRuleId": "@@//bazel:extensions.bzl%platform",
-            "attributes": {
-              "python_version": "3"
-            }
-          }
-        },
-        "recordedRepoMappingEntries": []
-      }
-    },
     "@@nanobind_bazel+//:internal_configure.bzl%internal_configure_extension": {
       "general": {
         "bzlTransitiveDigest": "+RbhD8ujxAsGec1ulJXDeiMbbinaxHnKC/Eo+mTlRZ4=",

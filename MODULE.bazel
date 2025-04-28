@@ -55,9 +55,3 @@ pip.parse(
 )
 
 use_repo(pip, "pip")
-
-# Helpers for Python packaging.
-python_abi = use_extension("//bazel:extensions.bzl", "python_abi")
-use_repo(python_abi, "python_abi")
-python_platform = use_extension("//bazel:extensions.bzl", "python_platform")
-use_repo(python_platform, "python_platform")

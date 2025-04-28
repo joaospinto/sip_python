@@ -33,3 +33,10 @@
 
 # Bazel
 bazel*
+
+# Packaging
+build
+**/*.egg-info
+
+# Python generated files
+**/__pycache__
