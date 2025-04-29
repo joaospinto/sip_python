@@ -19,33 +19,26 @@ import numpy as np
 
 from scipy import sparse as sp
 
-import sys
-
 def test_simple_qp():
     ss = Settings()
     ss.max_aug_kkt_violation = 1e-12
-    ss.num_iterative_refinement_steps = 1
-    ss.penalty_parameter_increase_factor = 3.0
     ss.enable_elastics = True
     ss.elastic_var_cost_coeff = 1e6
     ss.assert_checks_pass= True
 
     qs = QDLDLSettings()
     qs.permute_kkt_system = True
-    qs.kkt_pinv = np.arange(4)[::-1]
+    qs.kkt_pinv = np.arange(7)[::-1]
 
     @jax.jit
     def f(x):
-        return x[1] * (5.0 + x[0])
+        return 0.5 * (4.0 * x[0] * x[0] + 2.0 * x[0] * x[1] + 2.0 * x[1] * x[1]) + x[0] + x[1]
     @jax.jit
     def c(x):
-        return jnp.array([])
+        return jnp.array([x[0] + x[1] - 1.0])
     @jax.jit
     def g(x):
-        return jnp.array([
-            5.0 - x[0] * x[1],
-            x[0] * x[0] + x[1] * x[1] - 20.0,
-        ])
+        return jnp.array([x[0] - 0.7, -x[0] - 0.0, x[1] - 0.7, -x[1] - 0.0])
     @jax.jit
     def grad_f(x):
         return jax.grad(f)(x)
@@ -77,13 +70,13 @@ def test_simple_qp():
 
     pd = ProblemDimensions()
     pd.x_dim = x_dim
-    pd.s_dim = 2
-    pd.y_dim = 0
+    pd.s_dim = 4
+    pd.y_dim = 1
     pd.upper_hessian_lagrangian_nnz = upper_L_hess_nnz_pattern_sp.nnz
     pd.jacobian_c_nnz = jac_c_nnz_pattern_sp.nnz
     pd.jacobian_g_nnz = jac_g_nnz_pattern_sp.nnz
-    pd.kkt_nnz = 9
-    pd.kkt_L_nnz = 11
+    pd.kkt_nnz = 14
+    pd.kkt_L_nnz = 15
     pd.is_jacobian_c_transposed = True
     pd.is_jacobian_g_transposed = True
 
@@ -122,8 +115,5 @@ def test_simple_qp():
     output = solver.solve(vars)
 
     assert output.exit_status == Status.SOLVED
-    assert vars.x[0] == pytest.approx(-1.15747396, abs=1e-6)
-    assert vars.x[1] == pytest.approx(-4.31975162, abs=1e-6)
-
-if __name__ == "__main__":
-    sys.exit(pytest.main([__file__] + sys.argv[1:]))
+    assert vars.x[0] == pytest.approx(0.3, abs=1e-5)
+    assert vars.x[1] == pytest.approx(0.7, abs=1e-5)
