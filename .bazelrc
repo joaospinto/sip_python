@@ -14,8 +14,8 @@ build --linkopt=-lc++abi
 
 common --enable_platform_specific_config
 
-# Set minimum supported MacOS version to 10.14 for C++17.
-build:macos --macos_minimum_os=10.14
+# Set minimum supported MacOS version to 11.0.
+build:macos --macos_minimum_os=11.0
 
 ####################################################################################################
 # This block follows https://github.com/wjakob/nanobind_example/blob/bazel/.bazelrc

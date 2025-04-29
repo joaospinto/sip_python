@@ -28,10 +28,18 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
+    - uses: bazelbuild/setup-bazelisk@v3
+
+    - uses: bazel-contrib/setup-bazel@0.14.0
+      with:
+        bazelisk-cache: true
+        disk-cache: ${{ github.workflow }}
+        repository-cache: true
+
     - name: Set min macOS version
       if: runner.os == 'macOS'
       run: |
-        echo "MACOSX_DEPLOYMENT_TARGET=10.14" >> $GITHUB_ENV
+        echo "MACOSX_DEPLOYMENT_TARGET=11.0" >> $GITHUB_ENV
 
     - name: Install latest Clang on macOS.
       if: runner.os == 'macOS'
@@ -39,6 +47,12 @@ jobs:
         brew update
         brew install llvm@${{ matrix.llvm-version }}
         echo "$(brew --prefix llvm)/bin" >> $GITHUB_PATH
+
+    - name: Install python3-dev on Ubuntu.
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt install python3-dev
 
     - name: Install Clang-20 on Ubuntu.
       if: runner.os == 'Linux'
@@ -50,6 +64,7 @@ jobs:
 
     - name: Build and install
       run: |
+        python -m pip install --upgrade pip
         python -m pip install 'pytest' 'jax[cpu]'
         pip install --verbose .
 
