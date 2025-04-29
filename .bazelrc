@@ -1,10 +1,21 @@
 build --cxxopt=-std=c++23
+
 build --cxxopt=-Wall
 build --cxxopt=-Wextra
 build --cxxopt=-Wpedantic
 build --cxxopt=-Werror
+
 # This seems to be required by nanobind.
 build --cxxopt=-fno-aligned-allocation
+
+build --cxxopt=-stdlib=libc++
+build --linkopt=-stdlib=libc++
+build --linkopt=-lc++abi
+
+common --enable_platform_specific_config
+
+# Set minimum supported MacOS version to 10.14 for C++17.
+build:macos --macos_minimum_os=10.14
 
 ####################################################################################################
 # This block follows https://github.com/wjakob/nanobind_example/blob/bazel/.bazelrc
@@ -21,13 +32,7 @@ build --flag_alias=target_python_version=@rules_python//python/config_settings:p
 # rules_python's indicator to only use free-threaded toolchains for CPython 3.13+.
 # Needs to be given _together with_ nanobind-bazel's `free_threading` flag.
 build --flag_alias=free_threaded=@rules_python//python/config_settings:py_freethreaded
-
-# Set minimum supported MacOS version to 10.14 for C++17.
-common --enable_platform_specific_config
-build:macos --macos_minimum_os=10.14
 ####################################################################################################
-
-build --client_env=CC=clang
 
 build -c opt
 build --cxxopt=-O3

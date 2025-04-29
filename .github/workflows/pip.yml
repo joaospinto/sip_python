@@ -10,12 +10,16 @@ on:
 jobs:
   build:
     name: Build with Pip
-    runs-on: ${{ matrix.platform }}
+    runs-on: ${{ matrix.os}}
     strategy:
       fail-fast: false
       matrix:
-        platform: [windows-latest, macos-latest, ubuntu-latest]
+        os: [macos-latest, ubuntu-latest]
         python-version: ["3.8", "3.12"]
+        llvm-version: [20]
+    env:
+      CC: clang-${{ matrix.llvm-version }}
+      CXX: clang++-${{ matrix.llvm-version }}
 
     steps:
     - uses: actions/checkout@v4
@@ -28,6 +32,21 @@ jobs:
       if: runner.os == 'macOS'
       run: |
         echo "MACOSX_DEPLOYMENT_TARGET=10.14" >> $GITHUB_ENV
+
+    - name: Install latest Clang on macOS.
+      if: runner.os == 'macOS'
+      run: |
+        brew update
+        brew install llvm@${{ matrix.llvm-version }}
+        echo "$(brew --prefix llvm)/bin" >> $GITHUB_PATH
+
+    - name: Install Clang-20 on Ubuntu.
+      if: runner.os == 'Linux'
+      run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh ${{ matrix.llvm-version }} all
+        sudo apt-get update
 
     - name: Build and install
       run: |
