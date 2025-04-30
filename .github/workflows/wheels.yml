@@ -39,6 +39,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         llvm-version: [20]
+        python-version: ["3.12"]
     env:
       CC: clang-${{ matrix.llvm-version }}
       CXX: clang++-${{ matrix.llvm-version }}
