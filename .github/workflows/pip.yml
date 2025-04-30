@@ -28,8 +28,6 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - uses: bazelbuild/setup-bazelisk@v3
-
     - uses: bazel-contrib/setup-bazel@0.14.0
       with:
         bazelisk-cache: true
