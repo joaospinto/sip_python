@@ -30,6 +30,9 @@ build-verbosity = 1
 test-command = "pytest {project}/tests"
 test-requires = ["jax[cpu]", "pytest"]
 
+# Skip PyPy support for now (due to limited numpy wheels).
+skip = "pp*"
+
 # Needed for full C++17 support
 [tool.cibuildwheel.macos.environment]
 MACOSX_DEPLOYMENT_TARGET = "11.0"
