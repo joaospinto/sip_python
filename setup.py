@@ -1,8 +1,11 @@
+import contextlib
 import os
 import platform
+import re
 import shutil
 import sys
 from pathlib import Path
+from collections.abc import Generator
 
 import setuptools
 from setuptools.command import build_ext
@@ -15,6 +18,46 @@ free_threaded = "experimental free-threading build" in sys.version
 # Cannot be used together with free-threading.
 py_limited_api = sys.version_info >= (3, 12) and not free_threaded
 options = {"bdist_wheel": {"py_limited_api": "cp312"}} if py_limited_api else {}
+
+
+def is_cibuildwheel() -> bool:
+    return os.getenv("CIBUILDWHEEL") is not None
+
+
+@contextlib.contextmanager
+def _maybe_patch_toolchains() -> Generator[None, None, None]:
+    """
+    Patch rules_python toolchains to ignore root user error
+    when run in a Docker container on Linux in cibuildwheel.
+    """
+
+    def fmt_toolchain_args(matchobj):
+        suffix = "ignore_root_user_error = True"
+        callargs = matchobj.group(1)
+        # toolchain def is broken over multiple lines
+        if callargs.endswith("\n"):
+            callargs = callargs + "    " + suffix + ",\n"
+        # toolchain def is on one line.
+        else:
+            callargs = callargs + ", " + suffix
+        return "python.toolchain(" + callargs + ")"
+
+    CIBW_LINUX = is_cibuildwheel() and platform.system() == "Linux"
+    module_bazel = Path("MODULE.bazel")
+    content: str = module_bazel.read_text()
+    try:
+        if CIBW_LINUX:
+            module_bazel.write_text(
+                re.sub(
+                    r"python.toolchain\(([\w\"\s,.=]*)\)",
+                    fmt_toolchain_args,
+                    content,
+                )
+            )
+        yield
+    finally:
+        if CIBW_LINUX:
+            module_bazel.write_text(content)
 
 
 class BazelExtension(setuptools.Extension):
@@ -68,7 +111,8 @@ class BuildBazelExtension(build_ext.build_ext):
         if ext.free_threaded:
             bazel_argv += ["--free_threaded=yes"]
 
-        self.spawn(bazel_argv)
+        with _maybe_patch_toolchains():
+            self.spawn(bazel_argv)
 
         if platform.system() == "Windows":
             suffix = ".pyd"
