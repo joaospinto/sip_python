@@ -21,32 +21,3 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/joaospinto/sip_python"
-
-# [tool.cibuildwheel]
-# Necessary to see build output from the actual compilation
-# build-verbosity = 1
-
-# Run pytest to ensure that the package was correctly built
-# test-command = "pytest {project}/tests"
-# test-requires = ["jax[cpu]", "pytest"]
-
-# Skip PyPy support for now (due to limited numpy wheels).
-# skip = ["pp*", "*manylinux2014*", "*musllinux*"]
-
-# manylinux-x86_64-image = "quay.io/pypa/manylinux_2_34"
-
-# before-all = [
-#     "curl -O https://raw.githubusercontent.com/google/benchmark/refs/heads/main/.github/install_bazel.sh",
-#     "chmod +x install_bazel.sh",
-#     "./install_bazel.sh",
-#     "export PATH=$HOME/bin:$PATH",
-#     # TODO(joao): remove the lines below, they are for debug only.
-#     "echo $PATH",
-#     "which bazel",
-#     "$HOME/bin/bazel --version",
-#     "bazel --version",
-# ]
-
-# Needed for full C++17 support
-[tool.cibuildwheel.macos.environment]
-MACOSX_DEPLOYMENT_TARGET = "11.0"
