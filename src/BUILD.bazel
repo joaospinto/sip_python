@@ -25,6 +25,7 @@ py_library(
     name = "sip_python",
     srcs = [
         "sip_python/__init__.py",
+        "sip_python/helpers.py",
     ],
     data = [":sip_python_ext"],
     visibility = ["//visibility:public"],

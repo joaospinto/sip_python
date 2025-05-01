@@ -1,4 +1,6 @@
 from sip_python import (
+    get_kkt_and_L_nnzs,
+    get_kkt_perm_inv,
     ModelCallbackInput,
     ModelCallbackOutput,
     ProblemDimensions,
@@ -13,11 +15,13 @@ import pytest
 
 import jax
 from jax import numpy as jnp
+
 jax.config.update("jax_enable_x64", True)
 
 import numpy as np
 
 from scipy import sparse as sp
+
 
 def test_simple_qp():
     ss = Settings()
@@ -26,27 +30,29 @@ def test_simple_qp():
     ss.penalty_parameter_increase_factor = 3.0
     ss.enable_elastics = True
     ss.elastic_var_cost_coeff = 1e6
-    ss.assert_checks_pass= True
-
-    qs = QDLDLSettings()
-    qs.permute_kkt_system = True
-    qs.kkt_pinv = np.arange(4)[::-1]
+    ss.assert_checks_pass = True
 
     @jax.jit
     def f(x):
         return x[1] * (5.0 + x[0])
+
     @jax.jit
     def c(x):
         return jnp.array([])
+
     @jax.jit
     def g(x):
-        return jnp.array([
-            5.0 - x[0] * x[1],
-            x[0] * x[0] + x[1] * x[1] - 20.0,
-        ])
+        return jnp.array(
+            [
+                5.0 - x[0] * x[1],
+                x[0] * x[0] + x[1] * x[1] - 20.0,
+            ]
+        )
+
     @jax.jit
     def grad_f(x):
         return jax.grad(f)(x)
+
     @jax.jit
     def approx_upp_hess_f(x):
         def proj_psd(Q, delta=1e-6):
@@ -55,16 +61,22 @@ def test_simple_qp():
             return Q + k * jnp.eye(Q.shape[0])
 
         return jnp.triu(proj_psd(jax.hessian(f)(x)))
+
     @jax.jit
     def jac_c(x):
         return jax.jacfwd(c)(x)
+
     @jax.jit
     def jac_g(x):
         return jax.jacfwd(g)(x)
 
     x_dim = 2
 
-    mock_x = jnp.ones([x_dim,])
+    mock_x = jnp.ones(
+        [
+            x_dim,
+        ]
+    )
     jac_c_nnz_pattern = np.array(jac_c(mock_x))
     jac_g_nnz_pattern = np.array(jac_g(mock_x))
     upper_L_hess_nnz_pattern = np.array(approx_upp_hess_f(mock_x))
@@ -73,6 +85,14 @@ def test_simple_qp():
     jac_g_nnz_pattern_sp = sp.csr_matrix(jac_g_nnz_pattern)
     upper_L_hess_nnz_pattern_sp = sp.csc_matrix(upper_L_hess_nnz_pattern)
 
+    qs = QDLDLSettings()
+    qs.permute_kkt_system = True
+    qs.kkt_pinv = get_kkt_perm_inv(
+        P=upper_L_hess_nnz_pattern_sp,
+        A=jac_c_nnz_pattern_sp,
+        G=jac_g_nnz_pattern_sp,
+    )
+
     pd = ProblemDimensions()
     pd.x_dim = x_dim
     pd.s_dim = 2
@@ -80,8 +100,12 @@ def test_simple_qp():
     pd.upper_hessian_lagrangian_nnz = upper_L_hess_nnz_pattern_sp.nnz
     pd.jacobian_c_nnz = jac_c_nnz_pattern_sp.nnz
     pd.jacobian_g_nnz = jac_g_nnz_pattern_sp.nnz
-    pd.kkt_nnz = 9
-    pd.kkt_L_nnz = 11
+    pd.kkt_nnz, pd.kkt_L_nnz = get_kkt_and_L_nnzs(
+        P=upper_L_hess_nnz_pattern_sp,
+        A=jac_c_nnz_pattern_sp,
+        G=jac_g_nnz_pattern_sp,
+        perm_inv=qs.kkt_pinv,
+    )
     pd.is_jacobian_c_transposed = True
     pd.is_jacobian_g_transposed = True
 

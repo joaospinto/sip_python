@@ -150,7 +150,7 @@ class BuildBazelExtension(build_ext.build_ext):
 
 setuptools.setup(
     cmdclass=dict(build_ext=BuildBazelExtension),
-    package_data={'sip_python': ["py.typed", "*.pyi", "**/*.pyi"]},
+    package_data={"sip_python": ["py.typed", "*.pyi", "**/*.pyi"]},
     ext_modules=[
         BazelExtension(
             name="sip_python.sip_python_ext",

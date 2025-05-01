@@ -349,8 +349,10 @@ auto getLnnz(const Eigen::SparseMatrix<double> &M) -> int {
   std::vector<int> etree(M.rows());
   const int sumLnz = QDLDL_etree(M.rows(), M.outerIndexPtr(), M.innerIndexPtr(),
                                  iwork.data(), Lnz.data(), etree.data());
+  assert(sumLnz != -2 && "Index computations overflowed.");
   assert(sumLnz >= 0 && "sumLnz < 0; this signals an invalid input M.");
-  return sumLnz;
+  // QDLDL_etree does not account for the diagonal 1s.
+  return sumLnz + M.rows();
 }
 } // namespace sip_python
 

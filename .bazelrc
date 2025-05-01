@@ -5,14 +5,6 @@ build --cxxopt=-Wextra
 build --cxxopt=-Wpedantic
 build --cxxopt=-Werror
 
-# This seems to be required by nanobind.
-# build --cxxopt=-fno-aligned-allocation
-
-# TODO(joao): should probably only do this on macOS. might not even need?
-# build --cxxopt=-stdlib=libc++
-# build --linkopt=-stdlib=libc++
-# build --linkopt=-lc++abi
-
 common --enable_platform_specific_config
 
 # Set minimum supported MacOS version to 11.0.
