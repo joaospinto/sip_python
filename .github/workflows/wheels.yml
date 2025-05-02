@@ -13,7 +13,7 @@ on:
 jobs:
   build_sdist:
     name: Build SDist
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
       with:
@@ -30,14 +30,13 @@ jobs:
         name: dist-sdist
         path: dist/*.tar.gz
 
-
   build_wheels:
     name: Wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest]
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-13, macos-15, windows-2025]
         python-version: ["3.13"]
 
     steps:
@@ -74,7 +73,7 @@ jobs:
       uses: pypa/cibuildwheel@v2.23.0
       env:
         CIBW_BUILD_VERBOSITY: 1
-        CIBW_BUILD: "cp310-* cp311-* cp312-* cp-313*"
+        CIBW_BUILD: "cp310-* cp311-* cp312-* cp313*"
         CIBW_BUILD_FRONTEND: "build[uv]"
         CIBW_SKIP: "pp* *-musllinux_*"
         CIBW_ARCHS: auto64
@@ -102,7 +101,7 @@ jobs:
   upload_all:
     name: Upload if release
     needs: [build_wheels, build_sdist]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'release' && github.event.action == 'published'
 
     steps:
