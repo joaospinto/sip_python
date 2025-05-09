@@ -377,6 +377,9 @@ NB_MODULE(sip_python_ext, m) {
       .def_rw("max_suboptimal_constraint_violation",
               &sip::Settings::max_suboptimal_constraint_violation)
       .def_rw("max_merit_slope", &sip::Settings::max_merit_slope)
+      .def_rw("initial_regularization", &sip::Settings::initial_regularization)
+      .def_rw("regularization_decay_factor",
+              &sip::Settings::regularization_decay_factor)
       .def_rw("tau", &sip::Settings::tau)
       .def_rw("start_ls_with_alpha_s_max",
               &sip::Settings::start_ls_with_alpha_s_max)
