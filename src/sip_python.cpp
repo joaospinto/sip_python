@@ -371,11 +371,11 @@ NB_MODULE(sip_python_ext, m) {
       .def(nb::init<>())
       .def_rw("max_iterations", &sip::Settings::max_iterations)
       .def_rw("max_ls_iterations", &sip::Settings::max_ls_iterations)
-      .def_rw("min_iterations_for_convergence",
-              &sip::Settings::min_iterations_for_convergence)
       .def_rw("num_iterative_refinement_steps",
               &sip::Settings::num_iterative_refinement_steps)
-      .def_rw("max_aug_kkt_violation", &sip::Settings::max_aug_kkt_violation)
+      .def_rw("max_kkt_violation", &sip::Settings::max_kkt_violation)
+      .def_rw("max_suboptimal_constraint_violation",
+              &sip::Settings::max_suboptimal_constraint_violation)
       .def_rw("max_merit_slope", &sip::Settings::max_merit_slope)
       .def_rw("tau", &sip::Settings::tau)
       .def_rw("start_ls_with_alpha_s_max",
@@ -420,6 +420,8 @@ NB_MODULE(sip_python_ext, m) {
 
   nb::enum_<sip::Status>(m, "Status")
       .value("SOLVED", sip::Status::SOLVED)
+      .value("SUBOPTIMAL", sip::Status::SUBOPTIMAL)
+      .value("LOCALLY_INFEASIBLE", sip::Status::LOCALLY_INFEASIBLE)
       .value("ITERATION_LIMIT", sip::Status::ITERATION_LIMIT)
       .value("LINE_SEARCH_ITERATION_LIMIT",
              sip::Status::LINE_SEARCH_ITERATION_LIMIT)

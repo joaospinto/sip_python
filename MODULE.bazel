@@ -1,4 +1,4 @@
-module(name = "sip_python", version = "0.0.1")
+module(name = "sip_python", version = "0.0.2")
 
 # SIP
 # https://github.com/joaospinto/sip
@@ -6,7 +6,7 @@ bazel_dep(name = "sip", dev_dependency = True)
 git_override(
     module_name = "sip",
     remote = "https://github.com/joaospinto/sip.git",
-    commit = "4e07dfdb781379f20596b8ceb384c3b2fd18653b",
+    commit = "acfaf9e1201b283ad44690dfeeea760f9cfe010d",
 )
 
 # SIP_QDLDL
