@@ -315,8 +315,8 @@ public:
     };
 
     sip::Input input{
-        .ldlt_factor = std::cref(ldlt_factor),
-        .ldlt_solve = std::cref(ldlt_solve),
+        .factor = std::cref(ldlt_factor),
+        .solve = std::cref(ldlt_solve),
         .add_Kx_to_y = std::cref(add_Kx_to_y),
         .add_upper_symmetric_Hx_to_y = std::cref(add_upper_symmetric_Hx_to_y),
         .add_Cx_to_y = std::cref(add_Cx_to_y),
