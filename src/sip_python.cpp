@@ -13,13 +13,9 @@
 namespace nb = nanobind;
 
 namespace sip_python {
-auto to_sip_qdldl_spm(const sip::SparseMatrix &m)
-    -> sip_qdldl::ConstSparseMatrix {
-  return {m.rows, m.cols, m.ind, m.indptr, m.data, m.is_transposed};
-}
 
 auto to_sip_spm(const Eigen::SparseMatrix<double, Eigen::ColMajor> &in,
-                sip::SparseMatrix &out) -> void {
+                sip_qdldl::SparseMatrix &out) -> void {
   out.rows = in.rows();
   out.cols = in.cols();
   std::copy_n(in.outerIndexPtr(), out.cols + 1, out.indptr);
@@ -29,7 +25,7 @@ auto to_sip_spm(const Eigen::SparseMatrix<double, Eigen::ColMajor> &in,
 }
 
 auto to_sip_spm(const Eigen::SparseMatrix<double, Eigen::RowMajor> &in,
-                sip::SparseMatrix &out) -> void {
+                sip_qdldl::SparseMatrix &out) -> void {
   out.rows = in.cols();
   out.cols = in.rows();
   std::copy_n(in.outerIndexPtr(), out.cols + 1, out.indptr);
@@ -88,7 +84,7 @@ struct ModelCallbackInput {
 struct ModelCallbackOutput {
   ModelCallbackOutput() = default;
 
-  auto to(sip::ModelCallbackOutput &mco) const {
+  auto to(sip_qdldl::ModelCallbackOutput &mco) const {
     mco.f = f;
     std::copy_n(gradient_f.data(), gradient_f.size(), mco.gradient_f);
     to_sip_spm(upper_hessian_lagrangian, mco.upper_hessian_lagrangian);
@@ -166,7 +162,7 @@ private:
 
   ModelCallbackInput mci_;
 
-  sip::ModelCallbackOutput sip_mco_;
+  sip_qdldl::ModelCallbackOutput sip_mco_;
 
   sip::Workspace workspace_;
   sip_qdldl::Workspace sip_qdldl_workspace_;
@@ -174,7 +170,7 @@ private:
   sip_qdldl::CallbackProvider callback_provider_;
 
   static auto build_sip_mco_(const ProblemDimensions &problem_dimensions) {
-    sip::ModelCallbackOutput mco;
+    sip_qdldl::ModelCallbackOutput mco;
     mco.reserve(problem_dimensions.x_dim, problem_dimensions.s_dim,
                 problem_dimensions.y_dim,
                 problem_dimensions.upper_hessian_lagrangian_nnz,
@@ -188,7 +184,7 @@ private:
   static auto build_workspace_(const ProblemDimensions &problem_dimensions) {
     sip::Workspace workspace;
     workspace.reserve(problem_dimensions.x_dim, problem_dimensions.s_dim,
-                      problem_dimensions.y_dim, problem_dimensions.kkt_L_nnz);
+                      problem_dimensions.y_dim);
     return workspace;
   }
 
@@ -206,7 +202,7 @@ private:
   build_callback_provider_(const sip_qdldl::Settings &sip_qdldl_settings,
                            const ModelCallback &model_callback,
                            ModelCallbackInput &mci,
-                           sip::ModelCallbackOutput &sip_mco,
+                           sip_qdldl::ModelCallbackOutput &sip_mco,
                            sip_qdldl::Workspace &sip_qdldl_workspace)
       -> sip_qdldl::CallbackProvider {
     std::fill_n(mci.x.data(), mci.x.size(), 0.0);
@@ -214,11 +210,8 @@ private:
     std::fill_n(mci.z.data(), mci.z.size(), 0.0);
     const auto mco = model_callback(mci);
     mco.to(sip_mco);
-    return sip_qdldl::CallbackProvider(
-        to_sip_qdldl_spm(sip_mco.upper_hessian_lagrangian),
-        to_sip_qdldl_spm(sip_mco.jacobian_c),
-        to_sip_qdldl_spm(sip_mco.jacobian_g), sip_qdldl_settings,
-        sip_qdldl_workspace);
+    return sip_qdldl::CallbackProvider(sip_qdldl_settings, sip_mco,
+                                       sip_qdldl_workspace);
   }
 
   static auto build_sip_qdldl_settings_(const QDLDLSettings &settings) {
@@ -258,73 +251,82 @@ public:
 
     const auto timeout_callback = []() { return false; };
 
-    const auto ldlt_factor =
-        [this](const double *H_data, const double *C_data, const double *G_data,
-               const double *w, const double r1, const double r2,
-               const double r3, double *LT_data, double *D_diag) -> void {
-      return callback_provider_.ldlt_factor(H_data, C_data, G_data, w, r1, r2,
-                                            r3, LT_data, D_diag);
+    const auto ldlt_factor = [this](const double *w, const double r1,
+                                    const double r2, const double r3) -> void {
+      return callback_provider_.factor(w, r1, r2, r3);
     };
 
-    const auto ldlt_solve = [this](const double *LT_data, const double *D_diag,
-                                   const double *b, double *v) -> void {
-      return callback_provider_.ldlt_solve(LT_data, D_diag, b, v);
+    const auto ldlt_solve = [this](const double *b, double *v) -> void {
+      return callback_provider_.solve(b, v);
     };
 
-    const auto add_Kx_to_y =
-        [this](const double *H_data, const double *C_data, const double *G_data,
-               const double *w, const double r1, const double r2,
-               const double r3, const double *x_x, const double *x_y,
-               const double *x_z, double *y_x, double *y_y,
-               double *y_z) -> void {
-      return callback_provider_.add_Kx_to_y(H_data, C_data, G_data, w, r1, r2,
-                                            r3, x_x, x_y, x_z, y_x, y_y, y_z);
+    const auto add_Kx_to_y = [this](const double *w, const double r1,
+                                    const double r2, const double r3,
+                                    const double *x_x, const double *x_y,
+                                    const double *x_z, double *y_x, double *y_y,
+                                    double *y_z) -> void {
+      return callback_provider_.add_Kx_to_y(w, r1, r2, r3, x_x, x_y, x_z, y_x,
+                                            y_y, y_z);
     };
 
-    const auto add_upper_symmetric_Hx_to_y =
-        [this](const double *H_data, const double *x, double *y) -> void {
-      return callback_provider_.add_upper_symmetric_Hx_to_y(H_data, x, y);
+    const auto add_Hx_to_y = [this](const double *x, double *y) -> void {
+      return callback_provider_.add_Hx_to_y(x, y);
     };
 
-    const auto add_Cx_to_y = [this](const double *C_data, const double *x,
-                                    double *y) -> void {
-      return callback_provider_.add_Cx_to_y(C_data, x, y);
+    const auto add_Cx_to_y = [this](const double *x, double *y) -> void {
+      return callback_provider_.add_Cx_to_y(x, y);
     };
 
-    const auto add_CTx_to_y = [this](const double *C_data, const double *x,
-                                     double *y) -> void {
-      return callback_provider_.add_CTx_to_y(C_data, x, y);
+    const auto add_CTx_to_y = [this](const double *x, double *y) -> void {
+      return callback_provider_.add_CTx_to_y(x, y);
     };
 
-    const auto add_Gx_to_y = [this](const double *G_data, const double *x,
-                                    double *y) -> void {
-      return callback_provider_.add_Gx_to_y(G_data, x, y);
+    const auto add_Gx_to_y = [this](const double *x, double *y) -> void {
+      return callback_provider_.add_Gx_to_y(x, y);
     };
 
-    const auto add_GTx_to_y = [this](const double *G_data, const double *x,
-                                     double *y) -> void {
-      return callback_provider_.add_GTx_to_y(G_data, x, y);
+    const auto add_GTx_to_y = [this](const double *x, double *y) -> void {
+      return callback_provider_.add_GTx_to_y(x, y);
     };
 
-    const auto _model_callback = [&](const sip::ModelCallbackInput &mci,
-                                     sip::ModelCallbackOutput **mco) -> void {
+    const auto get_f = [this]() -> double { return sip_mco_.f; };
+
+    const auto get_grad_f = [this]() -> double * {
+      return sip_mco_.gradient_f;
+    };
+
+    const auto get_c = [this]() -> double * { return sip_mco_.c; };
+
+    const auto get_g = [this]() -> double * { return sip_mco_.g; };
+
+    const auto _model_callback =
+        [&](const sip::ModelCallbackInput &mci) -> void {
       mci_.from(mci);
       const auto _mco = model_callback_(mci_);
       _mco.to(sip_mco_);
-      *mco = &sip_mco_;
     };
 
     sip::Input input{
         .factor = std::cref(ldlt_factor),
         .solve = std::cref(ldlt_solve),
         .add_Kx_to_y = std::cref(add_Kx_to_y),
-        .add_upper_symmetric_Hx_to_y = std::cref(add_upper_symmetric_Hx_to_y),
+        .add_Hx_to_y = std::cref(add_Hx_to_y),
         .add_Cx_to_y = std::cref(add_Cx_to_y),
         .add_CTx_to_y = std::cref(add_CTx_to_y),
         .add_Gx_to_y = std::cref(add_Gx_to_y),
         .add_GTx_to_y = std::cref(add_GTx_to_y),
+        .get_f = std::cref(get_f),
+        .get_grad_f = std::cref(get_grad_f),
+        .get_c = std::cref(get_c),
+        .get_g = std::cref(get_g),
         .model_callback = std::cref(_model_callback),
         .timeout_callback = std::cref(timeout_callback),
+        .dimensions =
+            {
+                .x_dim = problem_dimensions_.x_dim,
+                .s_dim = problem_dimensions_.s_dim,
+                .y_dim = problem_dimensions_.y_dim,
+            },
     };
 
     const auto output = ::sip::solve(input, sip_settings_, workspace_);
@@ -354,6 +356,7 @@ auto getLnnz(const Eigen::SparseMatrix<double> &M) -> int {
   // QDLDL_etree does not account for the diagonal 1s.
   return sumLnz + M.rows();
 }
+
 } // namespace sip_python
 
 NB_MODULE(sip_python_ext, m) {
