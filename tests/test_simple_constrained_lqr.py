@@ -21,7 +21,7 @@ from sip_python import (
 jax.config.update("jax_enable_x64", True)
 
 
-def test_simple_lqr():
+def test_simple_constrained_lqr():
     ss = Settings()
     ss.max_kkt_violation = 1e-6
     ss.enable_elastics = True
@@ -32,8 +32,8 @@ def test_simple_lqr():
 
     x_dim = 2
     u_dim = 1
-    g_dim = 0
-    c_dim = 0
+    g_dim = 2
+    c_dim = 1
     T = 100
 
     dt = 0.1
@@ -67,16 +67,38 @@ def test_simple_lqr():
         out = jnp.concatenate(
             [
                 x_0 - X[0],
-                jax.vmap(lambda i: A @ X[i] + B @ U[i] - X[i + 1])(
-                    jnp.arange(T)
-                ).flatten(),
+                jnp.array(
+                    [
+                        0.0,
+                    ]
+                ),
+                jax.vmap(
+                    lambda i: jnp.concatenate(
+                        [
+                            (A @ X[i] + B @ U[i] - X[i + 1]),
+                            jnp.array(
+                                [
+                                    jnp.where(i + 1 == T, X[i + 1, 1], 0.0),
+                                ]
+                            ),
+                        ]
+                    )
+                )(jnp.arange(T)).flatten(),
             ]
         )
         return out
 
     @jax.jit
     def g(x):
-        return jnp.array([])
+        _X, U = split(x)
+        return jnp.concatenate(
+            [
+                jax.vmap(lambda i: jnp.array([U[i, 0] - 2.0, -U[i, 0] - 2.0]))(
+                    jnp.arange(T)
+                ).flatten(),
+                jnp.zeros(g_dim),
+            ]
+        )
 
     @jax.jit
     def grad_f(x):
