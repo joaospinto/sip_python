@@ -102,10 +102,11 @@ class BuildBazelExtension(build_ext.build_ext):
             "run",
             ext.bazel_target,
             f"--symlink_prefix={temp_path / 'bazel-'}",
-            f"--compilation_mode={'dbg' if self.debug else 'opt'}",
             f"--target_python_version={python_version}",
         ]
 
+        if self.debug:
+            bazel_argv += ["--config=debug"]
         if ext.py_limited_api:
             bazel_argv += ["--py_limited_api=cp312"]
         if ext.free_threaded:
