@@ -1,3 +1,10 @@
+import pytest
+import jax
+from jax import numpy as jnp
+
+import numpy as np
+from scipy import sparse as sp
+
 from sip_python import (
     get_kkt_and_L_nnzs,
     get_kkt_perm_inv,
@@ -11,16 +18,7 @@ from sip_python import (
     Variables,
 )
 
-import pytest
-
-import jax
-from jax import numpy as jnp
-
 jax.config.update("jax_enable_x64", True)
-
-import numpy as np
-
-from scipy import sparse as sp
 
 
 def test_simple_qp():
