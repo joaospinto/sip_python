@@ -404,6 +404,9 @@ NB_MODULE(sip_python_ext, m) {
               &sip::Settings::line_search_min_step_size)
       .def_rw("min_merit_slope_to_skip_line_search",
               &sip::Settings::min_merit_slope_to_skip_line_search)
+      .def_rw("dual_armijo_factor", &sip::Settings::dual_armijo_factor)
+      .def_rw("min_allowed_merit_increase",
+              &sip::Settings::min_allowed_merit_increase)
       .def_rw("enable_elastics", &sip::Settings::enable_elastics)
       .def_rw("elastic_var_cost_coeff", &sip::Settings::elastic_var_cost_coeff)
       .def_rw("enable_line_search_failures",
