@@ -36,7 +36,7 @@ bazel_dep(name = "robin-map", version = "1.3.0")
 bazel_dep(name = "nanobind_bazel", version = "2.6.1")
 
 # eigen (for nanobind's native sparse matrix support)
-bazel_dep(name = "eigen", version = "4.0.0-20241125.bcr.1")
+bazel_dep(name = "eigen", version = "3.4.0.bcr.3")
 
 # Set up Python and pip.
 bazel_dep(name = "rules_python", version = "1.3.0")
