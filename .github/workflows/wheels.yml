@@ -25,7 +25,7 @@ jobs:
     - name: Check metadata
       run: pipx run twine check dist/*
 
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v5
       with:
         name: dist-sdist
         path: dist/*.tar.gz
@@ -44,7 +44,7 @@ jobs:
       with:
         submodules: true
 
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -64,7 +64,7 @@ jobs:
         echo "MACOSX_DEPLOYMENT_TARGET=11.0" >> $GITHUB_ENV
 
     - name: Build wheels on ${{ matrix.os }} using cibuildwheel
-      uses: pypa/cibuildwheel@v3.1.4
+      uses: pypa/cibuildwheel@v3.2.1
       env:
         CIBW_BUILD_VERBOSITY: 1
         CIBW_BUILD: "cp310-* cp311-* cp312-*"
@@ -86,7 +86,7 @@ jobs:
       shell: bash
 
     - name: Upload wheels
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         path: wheelhouse/*.whl
         name: dist-${{ matrix.os }}
@@ -101,10 +101,10 @@ jobs:
       id-token: write
 
     steps:
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@v6
       with:
         python-version: 3.13
-    - uses: actions/download-artifact@v5
+    - uses: actions/download-artifact@v6
       with:
         path: dist
         pattern: dist-*
