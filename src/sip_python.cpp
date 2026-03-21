@@ -4,6 +4,9 @@
 #include <nanobind/stl/function.h>
 
 #include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <limits>
 
 #include <qdldl.h>
 
@@ -159,6 +162,7 @@ private:
   const sip_qdldl::Settings sip_qdldl_settings_;
   const ProblemDimensions &problem_dimensions_;
   ModelCallback model_callback_;
+  double time_limit_s_;
 
   ModelCallbackInput mci_;
 
@@ -225,11 +229,14 @@ public:
   Solver(const sip::Settings &sip_settings,
          const QDLDLSettings &sip_qdldl_settings,
          const ProblemDimensions &problem_dimensions,
-         ModelCallback model_callback)
+         ModelCallback model_callback,
+         double time_limit_s = std::numeric_limits<double>::infinity())
       : sip_settings_(sip_settings),
         sip_qdldl_settings_(build_sip_qdldl_settings_(sip_qdldl_settings)),
         problem_dimensions_(problem_dimensions),
-        model_callback_(model_callback), mci_(problem_dimensions),
+        model_callback_(model_callback),
+        time_limit_s_(time_limit_s),
+        mci_(problem_dimensions),
         sip_mco_(build_sip_mco_(problem_dimensions)),
         workspace_(build_workspace_(problem_dimensions)),
         sip_qdldl_workspace_(build_sip_qdldl_workspace_(problem_dimensions)),
@@ -249,7 +256,14 @@ public:
     std::copy_n(variables.y.data(), variables.y.size(), workspace_.vars.y);
     std::copy_n(variables.z.data(), variables.z.size(), workspace_.vars.z);
 
-    const auto timeout_callback = []() { return false; };
+    const auto start_time = std::chrono::steady_clock::now();
+    const double time_limit = time_limit_s_;
+    const auto timeout_callback = [start_time, time_limit]() {
+      if (std::isinf(time_limit))
+        return false;
+      const auto elapsed = std::chrono::steady_clock::now() - start_time;
+      return std::chrono::duration<double>(elapsed).count() >= time_limit;
+    };
 
     const auto ldlt_factor = [this](const double *w, const double r1,
                                     const double r2, const double r3) -> void {
@@ -365,9 +379,10 @@ NB_MODULE(sip_python_ext, m) {
   nb::class_<sip_python::Solver>(m, "Solver")
       .def(nb::init<const sip::Settings &, const sip_python::QDLDLSettings &,
                     const sip_python::ProblemDimensions &,
-                    sip_python::ModelCallback>(),
+                    sip_python::ModelCallback, double>(),
            nb::arg("sip_settings"), nb::arg("qdldl_settings"),
-           nb::arg("problem_dimension"), nb::arg("model_callback"))
+           nb::arg("problem_dimension"), nb::arg("model_callback"),
+           nb::arg("time_limit_s") = std::numeric_limits<double>::infinity())
       .def("solve", &sip_python::Solver::solve);
 
   nb::class_<sip::Settings>(m, "Settings")
@@ -389,6 +404,7 @@ NB_MODULE(sip_python_ext, m) {
       .def_rw("initial_mu", &sip::Settings::initial_mu)
       .def_rw("mu_update_factor", &sip::Settings::mu_update_factor)
       .def_rw("mu_min", &sip::Settings::mu_min)
+      .def_rw("mu_update_kappa", &sip::Settings::mu_update_kappa)
       .def_rw("initial_penalty_parameter",
               &sip::Settings::initial_penalty_parameter)
       .def_rw("min_acceptable_constraint_violation_ratio",
@@ -404,9 +420,6 @@ NB_MODULE(sip_python_ext, m) {
               &sip::Settings::line_search_min_step_size)
       .def_rw("min_merit_slope_to_skip_line_search",
               &sip::Settings::min_merit_slope_to_skip_line_search)
-      .def_rw("dual_armijo_factor", &sip::Settings::dual_armijo_factor)
-      .def_rw("min_allowed_merit_increase",
-              &sip::Settings::min_allowed_merit_increase)
       .def_rw("enable_elastics", &sip::Settings::enable_elastics)
       .def_rw("elastic_var_cost_coeff", &sip::Settings::elastic_var_cost_coeff)
       .def_rw("enable_line_search_failures",
