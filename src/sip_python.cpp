@@ -422,6 +422,7 @@ NB_MODULE(sip_python_ext, m) {
               &sip::Settings::min_merit_slope_to_skip_line_search)
       .def_rw("enable_elastics", &sip::Settings::enable_elastics)
       .def_rw("elastic_var_cost_coeff", &sip::Settings::elastic_var_cost_coeff)
+      .def_rw("skip_line_search", &sip::Settings::skip_line_search)
       .def_rw("enable_line_search_failures",
               &sip::Settings::enable_line_search_failures)
       .def_rw("print_logs", &sip::Settings::print_logs)

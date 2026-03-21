@@ -1,21 +1,58 @@
+import ctypes
+import os
 import warnings
 
 import numpy as np
 from scipy import sparse as spa
+from scipy.sparse.csgraph import reverse_cuthill_mckee
 
 from .sip_python_ext import getLnnz
 
-
-_cvxopt_available = False
+# Try to load libamd directly for fast AMD ordering.
+_libamd = None
 try:
-    from cvxopt import amd, spmatrix
+    _dylibs_dir = os.path.join(
+        os.path.dirname(__import__("cvxopt").__file__), ".dylibs"
+    )
+    for f in os.listdir(_dylibs_dir):
+        if f.startswith("libamd"):
+            _libamd = ctypes.CDLL(os.path.join(_dylibs_dir, f))
+            _libamd.amd_l_order.restype = ctypes.c_int
+            _libamd.amd_l_order.argtypes = [
+                ctypes.c_long,
+                ctypes.POINTER(ctypes.c_long),
+                ctypes.POINTER(ctypes.c_long),
+                ctypes.POINTER(ctypes.c_long),
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+            ]
+            break
+except Exception:
+    pass
 
-    _cvxopt_available = True
-except ImportError:
-    from scipy.sparse.csgraph import reverse_cuthill_mckee
+
+def _amd_order(K_csc):
+    """Compute AMD ordering on a CSC matrix via libamd."""
+    K_sym = (K_csc + K_csc.T).tocsc()
+    K_sym.sort_indices()
+    n = K_sym.shape[0]
+    Ap = K_sym.indptr.astype(np.int64)
+    Ai = K_sym.indices.astype(np.int64)
+    perm = np.empty(n, dtype=np.int64)
+    ret = _libamd.amd_l_order(
+        n,
+        Ap.ctypes.data_as(ctypes.POINTER(ctypes.c_long)),
+        Ai.ctypes.data_as(ctypes.POINTER(ctypes.c_long)),
+        perm.ctypes.data_as(ctypes.POINTER(ctypes.c_long)),
+        None,
+        None,
+    )
+    if ret != 0:
+        raise RuntimeError(f"amd_l_order failed with return code {ret}")
+    return perm.astype(np.intp)
 
 
-def _get_K(P, A, G):
+def get_K(P, A, G):
     # K = [ P + r1 I_x      A.T        G.T   ]
     #     [     A        -r2 * I_y      0    ]
     #     [     G            0       -r3 I_z ]
@@ -50,26 +87,20 @@ def _get_K(P, A, G):
     return K
 
 
-def _get_kkt_perm(P, A, G, verbose):
-    K = _get_K(P=P, A=A, G=G)
-
-    if _cvxopt_available:
-        K_cvxopt = spmatrix(
-            I=K.row,
-            J=K.col,
-            V=K.data,
-        )
-        return np.array(list(amd.order(K_cvxopt)))
+def _get_kkt_perm(K, verbose):
+    K_csc = spa.csc_matrix(K)
+    if _libamd is not None:
+        return _amd_order(K_csc)
     if verbose:
         warnings.warn(
             "cvxopt not installed; using reverse Cuthill-McKee (RCM) "
             "instead of approximate minimum degree (AMD)."
         )
-    return reverse_cuthill_mckee(spa.csc_matrix(K))
+    return reverse_cuthill_mckee(K_csc)
 
 
-def get_kkt_perm_inv(P, A, G, verbose=True):
-    perm = _get_kkt_perm(P=P, A=A, G=G, verbose=verbose)
+def get_kkt_perm_inv(K, verbose=True):
+    perm = _get_kkt_perm(K, verbose)
 
     perm_inv = np.empty_like(perm)
     perm_inv[perm] = np.arange(perm_inv.shape[0])
@@ -77,9 +108,7 @@ def get_kkt_perm_inv(P, A, G, verbose=True):
     return perm_inv
 
 
-def get_kkt_and_L_nnzs(P, A, G, perm_inv):
-    K = _get_K(P=P, A=A, G=G)
-
+def get_kkt_and_L_nnzs(K, perm_inv):
     permuted_K = spa.coo_matrix.copy(K)
     permuted_K.row = perm_inv[permuted_K.row]
     permuted_K.col = perm_inv[permuted_K.col]
@@ -87,3 +116,10 @@ def get_kkt_and_L_nnzs(P, A, G, perm_inv):
     kkt_L_nnz = getLnnz(spa.triu(permuted_K))
 
     return K.nnz, kkt_L_nnz
+
+
+def get_kkt_perm_inv_and_nnzs(P, A, G, verbose=True):
+    K = get_K(P, A, G)
+    perm_inv = get_kkt_perm_inv(K, verbose)
+    K_nnz, kkt_L_nnz = get_kkt_and_L_nnzs(K, perm_inv)
+    return perm_inv, K_nnz, kkt_L_nnz
