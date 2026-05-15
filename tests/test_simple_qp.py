@@ -6,8 +6,7 @@ import numpy as np
 from scipy import sparse as sp
 
 from sip_python import (
-    get_kkt_and_L_nnzs,
-    get_kkt_perm_inv,
+    get_kkt_perm_inv_and_nnzs,
     ModelCallbackInput,
     ModelCallbackOutput,
     ProblemDimensions,
@@ -27,6 +26,10 @@ def test_simple_qp():
     ss.enable_elastics = True
     ss.elastic_var_cost_coeff = 1e6
     ss.assert_checks_pass = True
+    ss.print_logs = False
+    ss.print_line_search_logs = False
+    ss.print_search_direction_logs = False
+    ss.print_derivative_check_logs = False
 
     @jax.jit
     def f(x):
@@ -80,27 +83,23 @@ def test_simple_qp():
     jac_g_nnz_pattern_sp = sp.csr_matrix(jac_g_nnz_pattern)
     upper_L_hess_nnz_pattern_sp = sp.csc_matrix(upper_L_hess_nnz_pattern)
 
+    pd = ProblemDimensions()
+    pd.x_dim = x_dim
+    pd.s_dim = jac_g_nnz_pattern_sp.shape[0]
+    pd.y_dim = jac_c_nnz_pattern_sp.shape[0]
+
     qs = QDLDLSettings()
     qs.permute_kkt_system = True
-    qs.kkt_pinv = get_kkt_perm_inv(
+    qs.kkt_pinv, pd.kkt_nnz, pd.kkt_L_nnz = get_kkt_perm_inv_and_nnzs(
         P=upper_L_hess_nnz_pattern_sp,
         A=jac_c_nnz_pattern_sp,
         G=jac_g_nnz_pattern_sp,
     )
 
-    pd = ProblemDimensions()
-    pd.x_dim = x_dim
-    pd.s_dim = 4
-    pd.y_dim = 1
     pd.upper_hessian_lagrangian_nnz = upper_L_hess_nnz_pattern_sp.nnz
     pd.jacobian_c_nnz = jac_c_nnz_pattern_sp.nnz
     pd.jacobian_g_nnz = jac_g_nnz_pattern_sp.nnz
-    pd.kkt_nnz, pd.kkt_L_nnz = get_kkt_and_L_nnzs(
-        P=upper_L_hess_nnz_pattern_sp,
-        A=jac_c_nnz_pattern_sp,
-        G=jac_g_nnz_pattern_sp,
-        perm_inv=qs.kkt_pinv,
-    )
+
     pd.is_jacobian_c_transposed = True
     pd.is_jacobian_g_transposed = True
 

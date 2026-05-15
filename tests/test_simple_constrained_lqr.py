@@ -6,8 +6,7 @@ import numpy as np
 from scipy import sparse as sp
 
 from sip_python import (
-    get_kkt_and_L_nnzs,
-    get_kkt_perm_inv,
+    get_kkt_perm_inv_and_nnzs,
     ModelCallbackInput,
     ModelCallbackOutput,
     ProblemDimensions,
@@ -29,6 +28,12 @@ def test_simple_constrained_lqr():
     ss.assert_checks_pass = True
     ss.penalty_parameter_increase_factor = 2.0
     ss.mu_update_factor = 0.9
+    ss.max_iterations = 200
+    ss.max_ls_iterations = 1000
+    ss.print_logs = False
+    ss.print_line_search_logs = False
+    ss.print_search_direction_logs = False
+    ss.print_derivative_check_logs = False
 
     x_dim = 2
     u_dim = 1
@@ -141,7 +146,7 @@ def test_simple_constrained_lqr():
 
     qs = QDLDLSettings()
     qs.permute_kkt_system = True
-    qs.kkt_pinv = get_kkt_perm_inv(
+    qs.kkt_pinv, pd.kkt_nnz, pd.kkt_L_nnz = get_kkt_perm_inv_and_nnzs(
         P=upper_L_hess_nnz_pattern_sp,
         A=jac_c_nnz_pattern_sp,
         G=jac_g_nnz_pattern_sp,
@@ -150,12 +155,6 @@ def test_simple_constrained_lqr():
     pd.upper_hessian_lagrangian_nnz = upper_L_hess_nnz_pattern_sp.nnz
     pd.jacobian_c_nnz = jac_c_nnz_pattern_sp.nnz
     pd.jacobian_g_nnz = jac_g_nnz_pattern_sp.nnz
-    pd.kkt_nnz, pd.kkt_L_nnz = get_kkt_and_L_nnzs(
-        P=upper_L_hess_nnz_pattern_sp,
-        A=jac_c_nnz_pattern_sp,
-        G=jac_g_nnz_pattern_sp,
-        perm_inv=qs.kkt_pinv,
-    )
     pd.is_jacobian_c_transposed = True
     pd.is_jacobian_g_transposed = True
 
