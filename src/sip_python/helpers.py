@@ -33,11 +33,10 @@ except Exception:
 
 def _amd_order(K_csc):
     """Compute AMD ordering on a CSC matrix via libamd."""
-    K_sym = (K_csc + K_csc.T).tocsc()
-    K_sym.sort_indices()
-    n = K_sym.shape[0]
-    Ap = K_sym.indptr.astype(np.int64)
-    Ai = K_sym.indices.astype(np.int64)
+    K_csc.sort_indices()
+    n = K_csc.shape[0]
+    Ap = K_csc.indptr.astype(np.int64)
+    Ai = K_csc.indices.astype(np.int64)
     perm = np.empty(n, dtype=np.int64)
     ret = _libamd.amd_l_order(
         n,
@@ -72,6 +71,7 @@ def get_K(P, A, G):
 
     mod_P = spa.csc_matrix.copy(P)
     mod_P.data[:] = 1.0
+    mod_P = mod_P + mod_P.T
 
     Z = spa.csc_matrix((y_dim, s_dim))
 
@@ -114,8 +114,9 @@ def get_kkt_and_L_nnzs(K, perm_inv):
     permuted_K.col = perm_inv[permuted_K.col]
 
     kkt_L_nnz = getLnnz(spa.triu(permuted_K))
+    kkt_nnz = spa.triu(permuted_K).nnz
 
-    return K.nnz, kkt_L_nnz
+    return kkt_nnz, kkt_L_nnz
 
 
 def get_kkt_perm_inv_and_nnzs(P, A, G, verbose=True):

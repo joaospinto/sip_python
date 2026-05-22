@@ -1,4 +1,4 @@
-module(name = "sip_python", version = "0.0.3")
+module(name = "sip_python", version = "0.0.4")
 
 # SIP
 # https://github.com/joaospinto/sip

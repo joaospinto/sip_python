@@ -234,10 +234,8 @@ public:
       : sip_settings_(sip_settings),
         sip_qdldl_settings_(build_sip_qdldl_settings_(sip_qdldl_settings)),
         problem_dimensions_(problem_dimensions),
-        model_callback_(model_callback),
-        time_limit_s_(time_limit_s),
-        mci_(problem_dimensions),
-        sip_mco_(build_sip_mco_(problem_dimensions)),
+        model_callback_(model_callback), time_limit_s_(time_limit_s),
+        mci_(problem_dimensions), sip_mco_(build_sip_mco_(problem_dimensions)),
         workspace_(build_workspace_(problem_dimensions)),
         sip_qdldl_workspace_(build_sip_qdldl_workspace_(problem_dimensions)),
         callback_provider_(
@@ -367,8 +365,7 @@ auto getLnnz(const Eigen::SparseMatrix<double> &M) -> int {
                                  iwork.data(), Lnz.data(), etree.data());
   assert(sumLnz != -2 && "Index computations overflowed.");
   assert(sumLnz >= 0 && "sumLnz < 0; this signals an invalid input M.");
-  // QDLDL_etree does not account for the diagonal 1s.
-  return sumLnz + M.rows();
+  return sumLnz;
 }
 
 } // namespace sip_python
