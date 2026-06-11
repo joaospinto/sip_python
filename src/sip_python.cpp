@@ -264,7 +264,7 @@ public:
     };
 
     const auto ldlt_factor = [this](const double *w, const double r1,
-                                    const double r2, const double r3) -> void {
+                                    const double r2, const double r3) -> bool {
       return callback_provider_.factor(w, r1, r2, r3);
     };
 
@@ -382,6 +382,17 @@ NB_MODULE(sip_python_ext, m) {
            nb::arg("time_limit_s") = std::numeric_limits<double>::infinity())
       .def("solve", &sip_python::Solver::solve);
 
+  nb::class_<sip::RegularizationSettings>(m, "RegularizationSettings")
+      .def(nb::init<>())
+      .def_rw("initial", &sip::RegularizationSettings::initial)
+      .def_rw("first_positive", &sip::RegularizationSettings::first_positive)
+      .def_rw("maximum", &sip::RegularizationSettings::maximum)
+      .def_rw("max_attempts", &sip::RegularizationSettings::max_attempts)
+      .def_rw("increase_factor",
+              &sip::RegularizationSettings::increase_factor)
+      .def_rw("decrease_factor",
+              &sip::RegularizationSettings::decrease_factor);
+
   nb::class_<sip::Settings>(m, "Settings")
       .def(nb::init<>())
       .def_rw("max_iterations", &sip::Settings::max_iterations)
@@ -392,9 +403,7 @@ NB_MODULE(sip_python_ext, m) {
       .def_rw("max_suboptimal_constraint_violation",
               &sip::Settings::max_suboptimal_constraint_violation)
       .def_rw("max_merit_slope", &sip::Settings::max_merit_slope)
-      .def_rw("initial_regularization", &sip::Settings::initial_regularization)
-      .def_rw("regularization_decay_factor",
-              &sip::Settings::regularization_decay_factor)
+      .def_rw("regularization", &sip::Settings::regularization)
       .def_rw("tau", &sip::Settings::tau)
       .def_rw("start_ls_with_alpha_s_max",
               &sip::Settings::start_ls_with_alpha_s_max)
@@ -448,6 +457,7 @@ NB_MODULE(sip_python_ext, m) {
       .value("LINE_SEARCH_FAILURE", sip::Status::LINE_SEARCH_FAILURE)
       .value("TIMEOUT", sip::Status::TIMEOUT)
       .value("FAILED_CHECK", sip::Status::FAILED_CHECK)
+      .value("FACTORIZATION_FAILURE", sip::Status::FACTORIZATION_FAILURE)
       .export_values();
 
   nb::class_<sip::Output>(m, "OutputStatus")
