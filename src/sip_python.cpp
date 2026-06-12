@@ -264,7 +264,8 @@ public:
     };
 
     const auto ldlt_factor = [this](const double *w, const double r1,
-                                    const double r2, const double r3) -> bool {
+                                    const double *r2,
+                                    const double *r3) -> bool {
       return callback_provider_.factor(w, r1, r2, r3);
     };
 
@@ -273,7 +274,7 @@ public:
     };
 
     const auto add_Kx_to_y = [this](const double *w, const double r1,
-                                    const double r2, const double r3,
+                                    const double *r2, const double *r3,
                                     const double *x_x, const double *x_y,
                                     const double *x_z, double *y_x, double *y_y,
                                     double *y_z) -> void {
