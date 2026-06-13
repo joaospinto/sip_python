@@ -6,7 +6,7 @@ bazel_dep(name = "sip")
 git_override(
     module_name = "sip",
     remote = "https://github.com/joaospinto/sip.git",
-    commit = "8e7cd281237e5a51290ca7e0b56c5fc6989a7e6e",
+    commit = "494f64ee1fce0dffd4aa7bf8dd40a2c09926caa3",
 )
 
 # SIP_QDLDL

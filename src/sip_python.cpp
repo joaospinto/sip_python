@@ -115,13 +115,11 @@ struct Variables {
   Variables(const ProblemDimensions &problem_dimensions) {
     double *x_data = new double[problem_dimensions.x_dim];
     double *s_data = new double[problem_dimensions.s_dim];
-    double *e_data = new double[problem_dimensions.s_dim];
     double *y_data = new double[problem_dimensions.y_dim];
     double *z_data = new double[problem_dimensions.s_dim];
 
     nb::capsule x_owner(x_data, [](void *p) noexcept { delete[] (double *)p; });
     nb::capsule s_owner(s_data, [](void *p) noexcept { delete[] (double *)p; });
-    nb::capsule e_owner(e_data, [](void *p) noexcept { delete[] (double *)p; });
     nb::capsule y_owner(y_data, [](void *p) noexcept { delete[] (double *)p; });
     nb::capsule z_owner(z_data, [](void *p) noexcept { delete[] (double *)p; });
 
@@ -131,9 +129,6 @@ struct Variables {
     s = nb::ndarray<nb::numpy, double, nb::ndim<1>>(
         s_data, {static_cast<unsigned long>(problem_dimensions.s_dim)},
         s_owner);
-    e = nb::ndarray<nb::numpy, double, nb::ndim<1>>(
-        e_data, {static_cast<unsigned long>(problem_dimensions.s_dim)},
-        e_owner);
     y = nb::ndarray<nb::numpy, double, nb::ndim<1>>(
         y_data, {static_cast<unsigned long>(problem_dimensions.y_dim)},
         y_owner);
@@ -143,7 +138,6 @@ struct Variables {
   }
   nb::ndarray<nb::numpy, double, nb::ndim<1>> x;
   nb::ndarray<nb::numpy, double, nb::ndim<1>> s;
-  nb::ndarray<nb::numpy, double, nb::ndim<1>> e;
   nb::ndarray<nb::numpy, double, nb::ndim<1>> y;
   nb::ndarray<nb::numpy, double, nb::ndim<1>> z;
 };
@@ -250,7 +244,6 @@ public:
   auto solve(Variables &variables) -> sip::Output {
     std::copy_n(variables.x.data(), variables.x.size(), workspace_.vars.x);
     std::copy_n(variables.s.data(), variables.s.size(), workspace_.vars.s);
-    std::copy_n(variables.e.data(), variables.e.size(), workspace_.vars.e);
     std::copy_n(variables.y.data(), variables.y.size(), workspace_.vars.y);
     std::copy_n(variables.z.data(), variables.z.size(), workspace_.vars.z);
 
@@ -348,8 +341,6 @@ public:
                 variables.x.data());
     std::copy_n(workspace_.vars.s, problem_dimensions_.s_dim,
                 variables.s.data());
-    std::copy_n(workspace_.vars.e, problem_dimensions_.s_dim,
-                variables.e.data());
     std::copy_n(workspace_.vars.y, problem_dimensions_.y_dim,
                 variables.y.data());
     std::copy_n(workspace_.vars.z, problem_dimensions_.s_dim,
@@ -389,58 +380,87 @@ NB_MODULE(sip_python_ext, m) {
       .def_rw("first_positive", &sip::RegularizationSettings::first_positive)
       .def_rw("maximum", &sip::RegularizationSettings::maximum)
       .def_rw("max_attempts", &sip::RegularizationSettings::max_attempts)
-      .def_rw("increase_factor",
-              &sip::RegularizationSettings::increase_factor)
-      .def_rw("decrease_factor",
-              &sip::RegularizationSettings::decrease_factor);
+      .def_rw("increase_factor", &sip::RegularizationSettings::increase_factor)
+      .def_rw("decrease_factor", &sip::RegularizationSettings::decrease_factor);
+
+  nb::class_<sip::BarrierSettings>(m, "BarrierSettings")
+      .def(nb::init<>())
+      .def_rw("initial_mu", &sip::BarrierSettings::initial_mu)
+      .def_rw("mu_update_factor", &sip::BarrierSettings::mu_update_factor)
+      .def_rw("mu_min", &sip::BarrierSettings::mu_min)
+      .def_rw("mu_update_kappa", &sip::BarrierSettings::mu_update_kappa);
+
+  nb::class_<sip::PenaltySettings>(m, "PenaltySettings")
+      .def(nb::init<>())
+      .def_rw("initial_penalty_parameter",
+              &sip::PenaltySettings::initial_penalty_parameter)
+      .def_rw("min_acceptable_constraint_violation_ratio",
+              &sip::PenaltySettings::min_acceptable_constraint_violation_ratio)
+      .def_rw("penalty_parameter_increase_factor",
+              &sip::PenaltySettings::penalty_parameter_increase_factor)
+      .def_rw("penalty_parameter_decrease_factor",
+              &sip::PenaltySettings::penalty_parameter_decrease_factor)
+      .def_rw("max_penalty_parameter",
+              &sip::PenaltySettings::max_penalty_parameter);
+
+  nb::class_<sip::TerminationSettings>(m, "TerminationSettings")
+      .def(nb::init<>())
+      .def_rw("max_dual_residual", &sip::TerminationSettings::max_dual_residual)
+      .def_rw("max_constraint_violation",
+              &sip::TerminationSettings::max_constraint_violation)
+      .def_rw("max_complementarity_gap",
+              &sip::TerminationSettings::max_complementarity_gap)
+      .def_rw("max_duality_gap", &sip::TerminationSettings::max_duality_gap)
+      .def_rw("enable_cost_change_termination",
+              &sip::TerminationSettings::enable_cost_change_termination)
+      .def_rw("max_cost_change", &sip::TerminationSettings::max_cost_change)
+      .def_rw("max_relative_cost_change",
+              &sip::TerminationSettings::max_relative_cost_change)
+      .def_rw("max_suboptimal_constraint_violation",
+              &sip::TerminationSettings::max_suboptimal_constraint_violation)
+      .def_rw("max_merit_slope", &sip::TerminationSettings::max_merit_slope);
+
+  nb::class_<sip::LineSearchSettings>(m, "LineSearchSettings")
+      .def(nb::init<>())
+      .def_rw("max_iterations", &sip::LineSearchSettings::max_iterations)
+      .def_rw("tau", &sip::LineSearchSettings::tau)
+      .def_rw("start_ls_with_alpha_s_max",
+              &sip::LineSearchSettings::start_ls_with_alpha_s_max)
+      .def_rw("armijo_factor", &sip::LineSearchSettings::armijo_factor)
+      .def_rw("line_search_factor",
+              &sip::LineSearchSettings::line_search_factor)
+      .def_rw("line_search_min_step_size",
+              &sip::LineSearchSettings::line_search_min_step_size)
+      .def_rw("min_merit_slope_to_skip_line_search",
+              &sip::LineSearchSettings::min_merit_slope_to_skip_line_search)
+      .def_rw("skip_line_search", &sip::LineSearchSettings::skip_line_search)
+      .def_rw("enable_line_search_failures",
+              &sip::LineSearchSettings::enable_line_search_failures);
+
+  nb::class_<sip::LoggingSettings>(m, "LoggingSettings")
+      .def(nb::init<>())
+      .def_rw("print_logs", &sip::LoggingSettings::print_logs)
+      .def_rw("print_line_search_logs",
+              &sip::LoggingSettings::print_line_search_logs)
+      .def_rw("print_search_direction_logs",
+              &sip::LoggingSettings::print_search_direction_logs)
+      .def_rw("print_derivative_check_logs",
+              &sip::LoggingSettings::print_derivative_check_logs)
+      .def_rw("only_check_search_direction_slope",
+              &sip::LoggingSettings::only_check_search_direction_slope);
 
   nb::class_<sip::Settings>(m, "Settings")
       .def(nb::init<>())
       .def_rw("max_iterations", &sip::Settings::max_iterations)
-      .def_rw("max_ls_iterations", &sip::Settings::max_ls_iterations)
       .def_rw("num_iterative_refinement_steps",
               &sip::Settings::num_iterative_refinement_steps)
-      .def_rw("max_kkt_violation", &sip::Settings::max_kkt_violation)
-      .def_rw("max_suboptimal_constraint_violation",
-              &sip::Settings::max_suboptimal_constraint_violation)
-      .def_rw("max_merit_slope", &sip::Settings::max_merit_slope)
+      .def_rw("assert_checks_pass", &sip::Settings::assert_checks_pass)
+      .def_rw("barrier", &sip::Settings::barrier)
+      .def_rw("penalty", &sip::Settings::penalty)
+      .def_rw("termination", &sip::Settings::termination)
       .def_rw("regularization", &sip::Settings::regularization)
-      .def_rw("tau", &sip::Settings::tau)
-      .def_rw("start_ls_with_alpha_s_max",
-              &sip::Settings::start_ls_with_alpha_s_max)
-      .def_rw("initial_mu", &sip::Settings::initial_mu)
-      .def_rw("mu_update_factor", &sip::Settings::mu_update_factor)
-      .def_rw("mu_min", &sip::Settings::mu_min)
-      .def_rw("mu_update_kappa", &sip::Settings::mu_update_kappa)
-      .def_rw("initial_penalty_parameter",
-              &sip::Settings::initial_penalty_parameter)
-      .def_rw("min_acceptable_constraint_violation_ratio",
-              &sip::Settings::min_acceptable_constraint_violation_ratio)
-      .def_rw("penalty_parameter_increase_factor",
-              &sip::Settings::penalty_parameter_increase_factor)
-      .def_rw("penalty_parameter_decrease_factor",
-              &sip::Settings::penalty_parameter_decrease_factor)
-      .def_rw("max_penalty_parameter", &sip::Settings::max_penalty_parameter)
-      .def_rw("armijo_factor", &sip::Settings::armijo_factor)
-      .def_rw("line_search_factor", &sip::Settings::line_search_factor)
-      .def_rw("line_search_min_step_size",
-              &sip::Settings::line_search_min_step_size)
-      .def_rw("min_merit_slope_to_skip_line_search",
-              &sip::Settings::min_merit_slope_to_skip_line_search)
-      .def_rw("enable_elastics", &sip::Settings::enable_elastics)
-      .def_rw("elastic_var_cost_coeff", &sip::Settings::elastic_var_cost_coeff)
-      .def_rw("skip_line_search", &sip::Settings::skip_line_search)
-      .def_rw("enable_line_search_failures",
-              &sip::Settings::enable_line_search_failures)
-      .def_rw("print_logs", &sip::Settings::print_logs)
-      .def_rw("print_line_search_logs", &sip::Settings::print_line_search_logs)
-      .def_rw("print_search_direction_logs",
-              &sip::Settings::print_search_direction_logs)
-      .def_rw("print_derivative_check_logs",
-              &sip::Settings::print_derivative_check_logs)
-      .def_rw("only_check_search_direction_slope",
-              &sip::Settings::only_check_search_direction_slope)
-      .def_rw("assert_checks_pass", &sip::Settings::assert_checks_pass);
+      .def_rw("line_search", &sip::Settings::line_search)
+      .def_rw("logging", &sip::Settings::logging);
 
   nb::class_<sip_python::QDLDLSettings>(m, "QDLDLSettings")
       .def(nb::init<>())
@@ -518,8 +538,6 @@ NB_MODULE(sip_python_ext, m) {
       .def_rw("x", &sip_python::Variables::x,
               nb::rv_policy::automatic_reference)
       .def_rw("s", &sip_python::Variables::s,
-              nb::rv_policy::automatic_reference)
-      .def_rw("e", &sip_python::Variables::e,
               nb::rv_policy::automatic_reference)
       .def_rw("y", &sip_python::Variables::y,
               nb::rv_policy::automatic_reference)

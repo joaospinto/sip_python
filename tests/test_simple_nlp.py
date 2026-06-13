@@ -22,14 +22,14 @@ jax.config.update("jax_enable_x64", True)
 
 def test_simple_qp():
     ss = Settings()
-    ss.max_kkt_violation = 1e-6
-    ss.enable_elastics = True
-    ss.elastic_var_cost_coeff = 1e6
+    ss.termination.max_dual_residual = 1e-6
+    ss.termination.max_constraint_violation = 1e-6
+    ss.termination.max_complementarity_gap = 1e-6
     ss.assert_checks_pass = True
-    ss.print_logs = False
-    ss.print_line_search_logs = False
-    ss.print_search_direction_logs = False
-    ss.print_derivative_check_logs = False
+    ss.logging.print_logs = False
+    ss.logging.print_line_search_logs = False
+    ss.logging.print_search_direction_logs = False
+    ss.logging.print_derivative_check_logs = False
 
     @jax.jit
     def f(x):
@@ -133,7 +133,6 @@ def test_simple_qp():
     vars.x[:] = 0.0
     vars.s[:] = 1.0
     vars.y[:] = 0.0
-    vars.e[:] = 0.0
     vars.z[:] = 1.0
 
     output = solver.solve(vars)
