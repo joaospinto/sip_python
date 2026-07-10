@@ -394,6 +394,8 @@ NB_MODULE(sip_python_ext, m) {
       .def(nb::init<>())
       .def_rw("initial_penalty_parameter",
               &sip::PenaltySettings::initial_penalty_parameter)
+      .def_rw("warm_start_penalties",
+              &sip::PenaltySettings::warm_start_penalties)
       .def_rw("min_acceptable_constraint_violation_ratio",
               &sip::PenaltySettings::min_acceptable_constraint_violation_ratio)
       .def_rw("penalty_parameter_increase_factor",
@@ -485,6 +487,7 @@ NB_MODULE(sip_python_ext, m) {
       .def(nb::init<>())
       .def_ro("exit_status", &sip::Output::exit_status)
       .def_ro("num_iterations", &sip::Output::num_iterations)
+      .def_ro("num_ls_iterations", &sip::Output::num_ls_iterations)
       .def_ro("max_primal_violation", &sip::Output::max_primal_violation)
       .def_ro("max_dual_violation", &sip::Output::max_dual_violation);
 
