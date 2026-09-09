@@ -77,24 +77,29 @@ struct ModelCallbackInput {
     std::copy_n(mci.x, x.size(), x.data());
     std::copy_n(mci.y, y.size(), y.data());
     std::copy_n(mci.z, z.size(), z.data());
+    need_derivatives = mci.need_derivatives;
   }
 
   nb::ndarray<nb::numpy, double, nb::ndim<1>> x;
   nb::ndarray<nb::numpy, double, nb::ndim<1>> y;
   nb::ndarray<nb::numpy, double, nb::ndim<1>> z;
+  bool need_derivatives = true;
 };
 
 struct ModelCallbackOutput {
   ModelCallbackOutput() = default;
 
-  auto to(sip_qdldl::ModelCallbackOutput &mco) const {
+  auto to(sip_qdldl::ModelCallbackOutput &mco,
+          const bool need_derivatives) const {
     mco.f = f;
-    std::copy_n(gradient_f.data(), gradient_f.size(), mco.gradient_f);
-    to_sip_spm(upper_hessian_lagrangian, mco.upper_hessian_lagrangian);
     std::copy_n(c.data(), c.size(), mco.c);
-    to_sip_spm(jacobian_c, mco.jacobian_c);
     std::copy_n(g.data(), g.size(), mco.g);
-    to_sip_spm(jacobian_g, mco.jacobian_g);
+    if (need_derivatives) {
+      std::copy_n(gradient_f.data(), gradient_f.size(), mco.gradient_f);
+      to_sip_spm(upper_hessian_lagrangian, mco.upper_hessian_lagrangian);
+      to_sip_spm(jacobian_c, mco.jacobian_c);
+      to_sip_spm(jacobian_g, mco.jacobian_g);
+    }
   }
 
   double f;
@@ -157,6 +162,7 @@ private:
   const ProblemDimensions &problem_dimensions_;
   ModelCallback model_callback_;
   double time_limit_s_;
+  std::vector<double> unit_residual_scaling_;
 
   ModelCallbackInput mci_;
 
@@ -179,10 +185,11 @@ private:
     return mco;
   }
 
-  static auto build_workspace_(const ProblemDimensions &problem_dimensions) {
+  static auto build_workspace_(const sip::Settings &settings,
+                               const ProblemDimensions &problem_dimensions) {
     sip::Workspace workspace;
     workspace.reserve(problem_dimensions.x_dim, problem_dimensions.s_dim,
-                      problem_dimensions.y_dim);
+                      problem_dimensions.y_dim, 0, settings);
     return workspace;
   }
 
@@ -207,7 +214,7 @@ private:
     std::fill_n(mci.y.data(), mci.y.size(), 0.0);
     std::fill_n(mci.z.data(), mci.z.size(), 0.0);
     const auto mco = model_callback(mci);
-    mco.to(sip_mco);
+    mco.to(sip_mco, mci.need_derivatives);
     return sip_qdldl::CallbackProvider(sip_qdldl_settings, sip_mco,
                                        sip_qdldl_workspace);
   }
@@ -229,8 +236,12 @@ public:
         sip_qdldl_settings_(build_sip_qdldl_settings_(sip_qdldl_settings)),
         problem_dimensions_(problem_dimensions),
         model_callback_(model_callback), time_limit_s_(time_limit_s),
+        unit_residual_scaling_(
+            std::max({problem_dimensions.x_dim, problem_dimensions.y_dim,
+                      problem_dimensions.s_dim}),
+            1.0),
         mci_(problem_dimensions), sip_mco_(build_sip_mco_(problem_dimensions)),
-        workspace_(build_workspace_(problem_dimensions)),
+        workspace_(build_workspace_(sip_settings, problem_dimensions)),
         sip_qdldl_workspace_(build_sip_qdldl_workspace_(problem_dimensions)),
         callback_provider_(
             build_callback_provider_(sip_qdldl_settings_, model_callback_, mci_,
@@ -256,7 +267,7 @@ public:
       return std::chrono::duration<double>(elapsed).count() >= time_limit;
     };
 
-    const auto ldlt_factor = [this](const double *w, const double r1,
+    const auto ldlt_factor = [this](const double *w, const double *r1,
                                     const double *r2,
                                     const double *r3) -> bool {
       return callback_provider_.factor(w, r1, r2, r3);
@@ -266,7 +277,7 @@ public:
       return callback_provider_.solve(b, v);
     };
 
-    const auto add_Kx_to_y = [this](const double *w, const double r1,
+    const auto add_Kx_to_y = [this](const double *w, const double *r1,
                                     const double *r2, const double *r3,
                                     const double *x_x, const double *x_y,
                                     const double *x_z, double *y_x, double *y_y,
@@ -309,7 +320,7 @@ public:
         [&](const sip::ModelCallbackInput &mci) -> void {
       mci_.from(mci);
       const auto _mco = model_callback_(mci_);
-      _mco.to(sip_mco_);
+      _mco.to(sip_mco_, mci.need_derivatives);
     };
 
     sip::Input input{
@@ -327,6 +338,10 @@ public:
         .get_g = std::cref(get_g),
         .model_callback = std::cref(_model_callback),
         .timeout_callback = std::cref(timeout_callback),
+        .residual_scaling = {.dual = unit_residual_scaling_.data(),
+                             .equality = unit_residual_scaling_.data(),
+                             .inequality = unit_residual_scaling_.data(),
+                             .variable_bound = unit_residual_scaling_.data()},
         .dimensions =
             {
                 .x_dim = problem_dimensions_.x_dim,
@@ -412,12 +427,6 @@ NB_MODULE(sip_python_ext, m) {
               &sip::TerminationSettings::max_constraint_violation)
       .def_rw("max_complementarity_gap",
               &sip::TerminationSettings::max_complementarity_gap)
-      .def_rw("max_duality_gap", &sip::TerminationSettings::max_duality_gap)
-      .def_rw("enable_cost_change_termination",
-              &sip::TerminationSettings::enable_cost_change_termination)
-      .def_rw("max_cost_change", &sip::TerminationSettings::max_cost_change)
-      .def_rw("max_relative_cost_change",
-              &sip::TerminationSettings::max_relative_cost_change)
       .def_rw("max_suboptimal_constraint_violation",
               &sip::TerminationSettings::max_suboptimal_constraint_violation)
       .def_rw("max_merit_slope", &sip::TerminationSettings::max_merit_slope);
@@ -515,7 +524,10 @@ NB_MODULE(sip_python_ext, m) {
       .def_ro("y", &sip_python::ModelCallbackInput::y,
               nb::rv_policy::automatic_reference)
       .def_ro("z", &sip_python::ModelCallbackInput::z,
-              nb::rv_policy::automatic_reference);
+              nb::rv_policy::automatic_reference)
+      .def_ro("need_derivatives",
+              &sip_python::ModelCallbackInput::need_derivatives,
+              "Whether derivatives are required in addition to model values.");
 
   nb::class_<sip_python::ModelCallbackOutput>(m, "ModelCallbackOutput")
       .def(nb::init<>())

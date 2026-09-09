@@ -20,7 +20,8 @@ from sip_python import (
 jax.config.update("jax_enable_x64", True)
 
 
-def test_simple_qp():
+@pytest.mark.parametrize("defer_derivatives", [False, True])
+def test_simple_qp(defer_derivatives):
     ss = Settings()
     ss.termination.max_dual_residual = 1e-6
     ss.termination.max_constraint_violation = 1e-6
@@ -103,12 +104,18 @@ def test_simple_qp():
     pd.is_jacobian_c_transposed = True
     pd.is_jacobian_g_transposed = True
 
+    requests = []
+
     def mc(mci: ModelCallbackInput) -> ModelCallbackOutput:
+        requests.append(mci.need_derivatives)
         mco = ModelCallbackOutput()
 
         mco.f = f(mci.x)
         mco.c = np.array(c(mci.x))
         mco.g = np.array(g(mci.x))
+
+        if defer_derivatives and not mci.need_derivatives:
+            return mco
 
         mco.gradient_f = np.array(grad_f(mci.x))
 
@@ -136,6 +143,8 @@ def test_simple_qp():
 
     output = solver.solve(vars)
 
+    assert requests[0] is True  # Constructor needs the derivative sparsity.
+    assert True in requests and False in requests
     assert output.exit_status == Status.SOLVED
     assert vars.x[0] == pytest.approx(0.3, abs=1e-2)
     assert vars.x[1] == pytest.approx(0.7, abs=1e-2)
