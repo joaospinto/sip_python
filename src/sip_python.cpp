@@ -338,6 +338,8 @@ public:
         .get_g = std::cref(get_g),
         .model_callback = std::cref(_model_callback),
         .timeout_callback = std::cref(timeout_callback),
+        .lower_bounds = nullptr,
+        .upper_bounds = nullptr,
         .residual_scaling = {.dual = unit_residual_scaling_.data(),
                              .equality = unit_residual_scaling_.data(),
                              .inequality = unit_residual_scaling_.data(),
