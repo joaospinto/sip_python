@@ -340,10 +340,12 @@ public:
         .timeout_callback = std::cref(timeout_callback),
         .lower_bounds = nullptr,
         .upper_bounds = nullptr,
-        .residual_scaling = {.dual = unit_residual_scaling_.data(),
-                             .equality = unit_residual_scaling_.data(),
-                             .inequality = unit_residual_scaling_.data(),
-                             .variable_bound = unit_residual_scaling_.data()},
+        .scaling =
+            {
+                .variable = unit_residual_scaling_.data(),
+                .equality = unit_residual_scaling_.data(),
+                .inequality = unit_residual_scaling_.data(),
+            },
         .dimensions =
             {
                 .x_dim = problem_dimensions_.x_dim,
@@ -431,7 +433,9 @@ NB_MODULE(sip_python_ext, m) {
               &sip::TerminationSettings::max_complementarity_gap)
       .def_rw("max_suboptimal_constraint_violation",
               &sip::TerminationSettings::max_suboptimal_constraint_violation)
-      .def_rw("max_merit_slope", &sip::TerminationSettings::max_merit_slope);
+      .def_rw("max_merit_slope", &sip::TerminationSettings::max_merit_slope)
+      .def_rw("dual_residual_s_max",
+              &sip::TerminationSettings::dual_residual_s_max);
 
   nb::class_<sip::LineSearchSettings>(m, "LineSearchSettings")
       .def(nb::init<>())

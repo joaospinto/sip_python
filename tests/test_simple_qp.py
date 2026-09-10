@@ -21,9 +21,11 @@ jax.config.update("jax_enable_x64", True)
 
 
 @pytest.mark.parametrize("defer_derivatives", [False, True])
-def test_simple_qp(defer_derivatives):
+@pytest.mark.parametrize("dual_s_max", [0.0, 0.01])
+def test_simple_qp(defer_derivatives, dual_s_max):
     ss = Settings()
     ss.termination.max_dual_residual = 1e-6
+    ss.termination.dual_residual_s_max = dual_s_max
     ss.termination.max_constraint_violation = 1e-6
     ss.termination.max_complementarity_gap = 1e-6
     ss.assert_checks_pass = True
